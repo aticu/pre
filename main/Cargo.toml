@@ -8,3 +8,8 @@ edition = "2018"
 
 [dependencies]
 pre-proc-macro = { path = "../proc-macro" }
+
+[features]
+default = ["const-generics-impl"]
+struct-impl = ["pre-proc-macro/struct-impl"]
+const-generics-impl = ["pre-proc-macro/const-generics-impl"]

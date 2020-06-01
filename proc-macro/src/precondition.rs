@@ -1,12 +1,11 @@
 //! Defines what a precondition is and how it's parsed.
 
-use quote::format_ident;
 use std::fmt;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
     token::Paren,
-    Ident, LitStr, Token,
+    LitStr, Token,
 };
 
 pub(crate) use self::kind::PreconditionKind;
@@ -51,25 +50,9 @@ impl Parse for Precondition {
 }
 
 impl Precondition {
-    /// Renders this precondition as a `String` representing an identifier.
-    pub(crate) fn render_as_ident(&self) -> Ident {
-        /// Escapes characters that are not valid in identifiers.
-        fn escape_non_ident_chars(string: String) -> String {
-            string
-                .chars()
-                .map(|c| match c {
-                    '_' | '0'..='9' | 'a'..='z' | 'A'..='Z' => c.to_string(),
-                    other => format!("_{:x}", other as u32),
-                })
-                .collect()
-        }
-
-        match self.kind.clone() {
-            PreconditionKind::ValidPtr { ident, .. } => format_ident!("_valid_ptr_{}", ident),
-            PreconditionKind::Custom(string) => {
-                format_ident!("_custom_{}", escape_non_ident_chars(string.value()))
-            }
-        }
+    /// Returns the kind of the precondition.
+    pub(crate) fn kind(&self) -> PreconditionKind {
+        self.kind.clone()
     }
 }
 
@@ -119,24 +102,8 @@ impl Parse for PreconditionHolds {
 }
 
 impl PreconditionHolds {
-    /// Renders this precondition as a `String` representing an identifier.
-    pub(crate) fn render_as_ident(&self) -> Ident {
-        /// Escapes characters that are not valid in identifiers.
-        fn escape_non_ident_chars(string: String) -> String {
-            string
-                .chars()
-                .map(|c| match c {
-                    '_' | '0'..='9' | 'a'..='z' | 'A'..='Z' => c.to_string(),
-                    other => format!("_{:x}", other as u32),
-                })
-                .collect()
-        }
-
-        match self.kind.clone() {
-            PreconditionKind::ValidPtr { ident, .. } => format_ident!("_valid_ptr_{}", ident),
-            PreconditionKind::Custom(string) => {
-                format_ident!("_custom_{}", escape_non_ident_chars(string.value()))
-            }
-        }
+    /// Returns the kind of the precondition.
+    pub(crate) fn kind(&self) -> PreconditionKind {
+        self.kind.clone()
     }
 }
