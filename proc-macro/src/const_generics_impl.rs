@@ -12,20 +12,30 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_quote, ExprCall, ItemFn, LitStr};
 
-use crate::precondition::{Precondition, PreconditionHolds, PreconditionKind};
+use crate::precondition::{Precondition, PreconditionHolds, PreconditionKind, PreconditionList};
+
+impl<T: ToTokens + Ord> ToTokens for PreconditionList<T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        for precondition in self.sorted_iter() {
+            tokens.append_all(quote! {
+                #precondition,
+            });
+        }
+    }
+}
 
 impl ToTokens for Precondition {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self.kind() {
             PreconditionKind::Custom(string) => {
                 tokens.append_all(quote! {
-                    impl ::pre::CustomCondition::<#string>,
+                    impl ::pre::CustomCondition::<#string>
                 });
             }
             PreconditionKind::ValidPtr { ident, .. } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
                 tokens.append_all(quote! {
-                    impl ::pre::ValidPtrCondition::<#ident_lit>,
+                    impl ::pre::ValidPtrCondition::<#ident_lit>
                 });
             }
         }
@@ -33,7 +43,10 @@ impl ToTokens for Precondition {
 }
 
 /// Generates the code for the function with the precondition handling added.
-pub(crate) fn render_pre(preconditions: Precondition, mut function: ItemFn) -> TokenStream {
+pub(crate) fn render_pre(
+    preconditions: PreconditionList<Precondition>,
+    mut function: ItemFn,
+) -> TokenStream {
     function.sig.inputs.push(parse_quote! {
         _: ::core::marker::PhantomData<(#preconditions)>
     });
@@ -48,13 +61,13 @@ impl ToTokens for PreconditionHolds {
         match self.kind() {
             PreconditionKind::Custom(string) => {
                 tokens.append_all(quote! {
-                    ::pre::CustomConditionHolds::<#string>,
+                    ::pre::CustomConditionHolds::<#string>
                 });
             }
             PreconditionKind::ValidPtr { ident, .. } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
                 tokens.append_all(quote! {
-                    ::pre::ValidPtrConditionHolds::<#ident_lit>,
+                    ::pre::ValidPtrConditionHolds::<#ident_lit>
                 });
             }
         }
@@ -63,7 +76,7 @@ impl ToTokens for PreconditionHolds {
 
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_precondition(
-    preconditions: PreconditionHolds,
+    preconditions: PreconditionList<PreconditionHolds>,
     mut call: ExprCall,
 ) -> TokenStream {
     call.args.push(parse_quote! {

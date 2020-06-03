@@ -1,5 +1,11 @@
 //! Implements the procedural macros using generated structs passed as an additional parameter.
 //!
+//! The struct has the same name as the function to avoid having to know how to import it.
+//! See [this
+//! description](https://github.com/dtolnay/case-studies/tree/master/unit-type-parameters/README.md)
+//! if you want to understand how it works. It describes solving the import issue for a different
+//! problem.
+//!
 //! # Advantages of this approach
 //! - uses only stable features
 //! - quick to compute
@@ -8,12 +14,13 @@
 //! - possible name clashes, because the identifier namespace is limited
 //! - error messages not very readable
 //! - the struct must be defined somewhere, which is not possible for a method
+//! - it does not work when
 
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{parse_quote, Expr, ExprCall, ItemFn};
+use quote::{format_ident, quote};
+use syn::{parse_quote, Expr, ExprCall, Ident, ItemFn};
 
-use crate::precondition::{Precondition, PreconditionHolds};
+use crate::precondition::{Precondition, PreconditionHolds, PreconditionKind, PreconditionList};
 
 /// Renders a precondition as a `String` representing an identifier.
 pub(crate) fn render_as_ident(precondition: &PreconditionKind) -> Ident {
@@ -22,7 +29,8 @@ pub(crate) fn render_as_ident(precondition: &PreconditionKind) -> Ident {
         string
             .chars()
             .map(|c| match c {
-                '_' | '0'..='9' | 'a'..='z' | 'A'..='Z' => c.to_string(),
+                '0'..='9' | 'a'..='z' | 'A'..='Z' => c.to_string(),
+                '_' => format!("__"), // escape `'_'` to prevent name clashes
                 other => format!("_{:x}", other as u32),
             })
             .collect()
@@ -37,14 +45,26 @@ pub(crate) fn render_as_ident(precondition: &PreconditionKind) -> Ident {
 }
 
 /// Generates the code for the function with the precondition handling added.
-pub(crate) fn render_pre(preconditions: Precondition, mut function: ItemFn) -> TokenStream {
+pub(crate) fn render_pre(
+    preconditions: PreconditionList<Precondition>,
+    mut function: ItemFn,
+) -> TokenStream {
     let function_name = function.sig.ident.clone();
-    let precondition_rendered = render_as_ident(preconditions.kind());
+    let mut preconditions_rendered = quote! {};
+
+    for precondition in preconditions.iter() {
+        let precondition_rendered = render_as_ident(&precondition.kind());
+
+        preconditions_rendered = quote! {
+            #preconditions_rendered
+            #precondition_rendered: (),
+        };
+    }
 
     let struct_def = quote! {
         #[allow(non_camel_case_types)]
         struct #function_name {
-            #precondition_rendered: ()
+            #preconditions_rendered
         }
     };
 
@@ -60,7 +80,7 @@ pub(crate) fn render_pre(preconditions: Precondition, mut function: ItemFn) -> T
 
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_precondition(
-    preconditions: PreconditionHolds,
+    preconditions: PreconditionList<PreconditionHolds>,
     mut call: ExprCall,
 ) -> TokenStream {
     let path;
@@ -68,13 +88,24 @@ pub(crate) fn render_assert_precondition(
     if let Expr::Path(p) = *call.func.clone() {
         path = p;
     } else {
-        panic!("unable to exactly determine at compile time which function is being called");
+        proc_macro_error::abort_call_site!(
+            "unable to determine at compile time which function is being called"
+        );
     }
-    let precondition_rendered = render_as_ident(preconditions.kind());
+    let mut preconditions_rendered = quote! {};
+
+    for precondition in preconditions.iter() {
+        let precondition_rendered = render_as_ident(&precondition.kind());
+
+        preconditions_rendered = quote! {
+            #preconditions_rendered
+            #precondition_rendered: (),
+        };
+    }
 
     call.args.push(parse_quote! {
         #path {
-            #precondition_rendered: ()
+            #preconditions_rendered
         }
     });
 

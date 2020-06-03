@@ -1,6 +1,6 @@
 //! Defines what a precondition is and how it's parsed.
 
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -8,9 +8,10 @@ use syn::{
     LitStr, Token,
 };
 
-pub(crate) use self::kind::PreconditionKind;
+pub(crate) use self::{kind::PreconditionKind, list::PreconditionList};
 
 mod kind;
+mod list;
 
 /// The custom keywords used in preconditions.
 mod custom_keywords {
@@ -51,10 +52,30 @@ impl Parse for Precondition {
 
 impl Precondition {
     /// Returns the kind of the precondition.
-    pub(crate) fn kind(&self) -> PreconditionKind {
-        self.kind.clone()
+    pub(crate) fn kind(&self) -> &PreconditionKind {
+        &self.kind
     }
 }
+
+impl Ord for Precondition {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.kind().cmp(other.kind())
+    }
+}
+
+impl PartialOrd for Precondition {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Precondition {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Precondition {}
 
 /// A declaration that a precondition holds.
 pub(crate) struct PreconditionHolds {
@@ -103,7 +124,27 @@ impl Parse for PreconditionHolds {
 
 impl PreconditionHolds {
     /// Returns the kind of the precondition.
-    pub(crate) fn kind(&self) -> PreconditionKind {
-        self.kind.clone()
+    pub(crate) fn kind(&self) -> &PreconditionKind {
+        &self.kind
     }
 }
+
+impl Ord for PreconditionHolds {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.kind().cmp(other.kind())
+    }
+}
+
+impl PartialOrd for PreconditionHolds {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for PreconditionHolds {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for PreconditionHolds {}

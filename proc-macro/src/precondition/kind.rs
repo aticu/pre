@@ -1,6 +1,6 @@
 //! Defines the different kinds of preconditions.
 
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -34,12 +34,12 @@ pub(crate) enum PreconditionKind {
 impl fmt::Debug for PreconditionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PreconditionKind::Custom(lit) => write!(f, "{:?}", lit.value()),
             PreconditionKind::ValidPtr {
                 _valid_ptr_keyword: _,
                 _parentheses: _,
                 ident,
             } => write!(f, "valid_ptr({})", ident.to_string()),
+            PreconditionKind::Custom(lit) => write!(f, "{:?}", lit.value()),
         }
     }
 }
@@ -63,3 +63,49 @@ impl Parse for PreconditionKind {
         }
     }
 }
+
+impl PreconditionKind {
+    /// Returns a unique id for each descriminant.
+    fn descriminant_id(&self) -> usize {
+        match self {
+            PreconditionKind::ValidPtr { .. } => 0,
+            PreconditionKind::Custom(_) => 1,
+        }
+    }
+}
+
+// Define an order for the preconditions here.
+//
+// The exact ordering does not really matter, as long as it is deterministic.
+impl Ord for PreconditionKind {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (
+                PreconditionKind::ValidPtr { ident: ident_a, .. },
+                PreconditionKind::ValidPtr { ident: ident_b, .. },
+            ) => ident_a.to_string().cmp(&ident_b.to_string()),
+            (PreconditionKind::Custom(lit_a), PreconditionKind::Custom(lit_b)) => {
+                lit_a.value().cmp(&lit_b.value())
+            }
+            _ => {
+                debug_assert_ne!(self.descriminant_id(), other.descriminant_id());
+
+                self.descriminant_id().cmp(&other.descriminant_id())
+            }
+        }
+    }
+}
+
+impl PartialOrd for PreconditionKind {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for PreconditionKind {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for PreconditionKind {}
