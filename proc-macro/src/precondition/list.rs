@@ -51,7 +51,8 @@ impl<T: Ord> PreconditionList<T> {
     pub(crate) fn sorted_iter(&self) -> impl Iterator<Item = &T> {
         let mut index_vec: Vec<_> = (0..self.preconditions.len()).collect();
 
-        index_vec.sort_unstable_by_key(|&index| &self.preconditions[index]);
+        // Reverse the order here, so we can simply pop in the iterator
+        index_vec.sort_unstable_by_key(|&index| std::cmp::Reverse(&self.preconditions[index]));
 
         SortedIterator {
             list: &self,
