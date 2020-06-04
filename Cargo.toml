@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "proc-macro",
+    "tests",
     "main"
 ]

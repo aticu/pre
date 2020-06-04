@@ -8,11 +8,18 @@
 //! # Disadvantages of this approach
 //! - error messages for no invariants not very readable
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
+use proc_macro_crate::crate_name;
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{parse_quote, ExprCall, ItemFn, LitStr};
+use syn::{parse_quote, ExprCall, Ident, ItemFn, LitStr};
 
 use crate::precondition::{Precondition, PreconditionHolds, PreconditionKind, PreconditionList};
+
+/// Returns the name of the main crate.
+fn get_crate_name() -> Ident {
+    let name = crate_name("pre").expect("crate `pre` must be imported");
+    Ident::new(&name, Span::call_site())
+}
 
 impl<T: ToTokens + Ord> ToTokens for PreconditionList<T> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -26,16 +33,17 @@ impl<T: ToTokens + Ord> ToTokens for PreconditionList<T> {
 
 impl ToTokens for Precondition {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        let pre = get_crate_name();
         match self.kind() {
             PreconditionKind::Custom(string) => {
                 tokens.append_all(quote! {
-                    impl ::pre::CustomCondition::<#string>
+                    impl ::#pre::CustomCondition::<#string>
                 });
             }
             PreconditionKind::ValidPtr { ident, .. } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
                 tokens.append_all(quote! {
-                    impl ::pre::ValidPtrCondition::<#ident_lit>
+                    impl ::#pre::ValidPtrCondition::<#ident_lit>
                 });
             }
         }
@@ -58,16 +66,17 @@ pub(crate) fn render_pre(
 
 impl ToTokens for PreconditionHolds {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        let pre = get_crate_name();
         match self.kind() {
             PreconditionKind::Custom(string) => {
                 tokens.append_all(quote! {
-                    ::pre::CustomConditionHolds::<#string>
+                    ::#pre::CustomConditionHolds::<#string>
                 });
             }
             PreconditionKind::ValidPtr { ident, .. } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
                 tokens.append_all(quote! {
-                    ::pre::ValidPtrConditionHolds::<#ident_lit>
+                    ::#pre::ValidPtrConditionHolds::<#ident_lit>
                 });
             }
         }

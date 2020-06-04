@@ -9,6 +9,9 @@ edition = "2018"
 [dependencies]
 pre-proc-macro = { path = "../proc-macro" }
 
+[dev-dependencies]
+trybuild = "1.0"
+
 [features]
 default = ["const-generics-impl"]
 #default = ["struct-impl"]

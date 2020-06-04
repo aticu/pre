@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:15:9
+   |
+15 |         #[assert_precondition(holds(valid_ptr(ptr), reason = "`ptr` comes from a reference"))]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 1 element
+   |
+   = note: expected struct `std::marker::PhantomData<(_, _)>`
+              found struct `std::marker::PhantomData<(pre::const_generics_types::ValidPtrConditionHolds<"ptr">,)>`
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)

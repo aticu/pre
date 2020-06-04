@@ -12,10 +12,7 @@ fn main() {
     let ptr: *const i32 = &42;
 
     let (_, _) = unsafe {
-        #[assert_precondition(
-            holds("must point to `42`", reason = "*ptr == 42"),
-            holds(valid_ptr(ptr), reason = "`ptr` comes from a reference")
-        )]
+        #[assert_precondition(holds(valid_ptr(ptr), reason = "`ptr` comes from a reference"))]
         read_twice(ptr)
     };
 }
