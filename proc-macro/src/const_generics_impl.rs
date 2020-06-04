@@ -37,13 +37,13 @@ impl ToTokens for Precondition {
         match self.kind() {
             PreconditionKind::Custom(string) => {
                 tokens.append_all(quote! {
-                    impl ::#pre::CustomCondition::<#string>
+                    ::#pre::CustomConditionHolds::<#string>
                 });
             }
             PreconditionKind::ValidPtr { ident, .. } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
                 tokens.append_all(quote! {
-                    impl ::#pre::ValidPtrCondition::<#ident_lit>
+                    ::#pre::ValidPtrConditionHolds::<#ident_lit>
                 });
             }
         }
