@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "proc-macro",
-    "tests",
+    "struct-impl-tests",
+    "const-generics-impl-tests",
     "main"
 ]

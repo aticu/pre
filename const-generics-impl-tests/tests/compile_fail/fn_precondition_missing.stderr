@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:15:9
+  --> $DIR/fn_precondition_missing.rs:12:9
    |
-15 |         #[assert_precondition(holds(valid_ptr(ptr), reason = "`ptr` comes from a reference"))]
+12 |         #[assert_precondition(holds(valid_ptr(ptr), reason = "`ptr` comes from a reference"))]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 1 element
    |
    = note: expected struct `std::marker::PhantomData<(pre::const_generics_types::ValidPtrConditionHolds<"ptr">, pre::const_generics_types::CustomConditionHolds<"must point to `42`">)>`

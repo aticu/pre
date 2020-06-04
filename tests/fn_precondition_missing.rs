@@ -1,6 +1,3 @@
-#![feature(proc_macro_hygiene)]
-#![feature(stmt_expr_attributes)]
-
 use pre::{assert_precondition, pre};
 
 #[pre(condition(valid_ptr(ptr)), condition("must point to `42`"))]
