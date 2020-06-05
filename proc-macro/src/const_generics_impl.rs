@@ -84,15 +84,13 @@ impl ToTokens for PreconditionHolds {
 }
 
 /// Generates the code for the call with the precondition handling added.
-pub(crate) fn render_assert_precondition(
+pub(crate) fn render_assert_pre(
     preconditions: PreconditionList<PreconditionHolds>,
     mut call: ExprCall,
-) -> TokenStream {
+) -> ExprCall {
     call.args.push(parse_quote! {
         ::core::marker::PhantomData::<(#preconditions)>
     });
 
-    quote! {
-        #call
-    }
+    call
 }

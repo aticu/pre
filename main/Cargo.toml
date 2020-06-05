@@ -13,7 +13,7 @@ pre-proc-macro = { path = "../proc-macro" }
 trybuild = "1.0"
 
 [features]
-default = ["const-generics-impl"]
-#default = ["struct-impl"]
+#default = ["const-generics-impl"]
+default = ["struct-impl"]
 struct-impl = ["pre-proc-macro/struct-impl"]
 const-generics-impl = ["pre-proc-macro/const-generics-impl"]

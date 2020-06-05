@@ -79,10 +79,10 @@ pub(crate) fn render_pre(
 }
 
 /// Generates the code for the call with the precondition handling added.
-pub(crate) fn render_assert_precondition(
+pub(crate) fn render_assert_pre(
     preconditions: PreconditionList<PreconditionHolds>,
     mut call: ExprCall,
-) -> TokenStream {
+) -> ExprCall {
     let path;
 
     if let Expr::Path(p) = *call.func.clone() {
@@ -109,7 +109,5 @@ pub(crate) fn render_assert_precondition(
         }
     });
 
-    quote! {
-        #call
-    }
+    call
 }

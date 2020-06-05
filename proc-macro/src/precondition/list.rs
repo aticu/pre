@@ -41,6 +41,7 @@ impl<T: Parse> Parse for PreconditionList<T> {
 
 impl<T> PreconditionList<T> {
     /// Provides an iterator over the preconditions.
+    #[allow(dead_code)]
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.preconditions.iter()
     }
@@ -48,6 +49,7 @@ impl<T> PreconditionList<T> {
 
 impl<T: Ord> PreconditionList<T> {
     /// Provides an iterator with a deterministic ordering over the preconditions.
+    #[allow(dead_code)]
     pub(crate) fn sorted_iter(&self) -> impl Iterator<Item = &T> {
         let mut index_vec: Vec<_> = (0..self.preconditions.len()).collect();
 
@@ -62,6 +64,7 @@ impl<T: Ord> PreconditionList<T> {
 }
 
 /// An iterator over a sorted precondition list.
+#[allow(dead_code)]
 struct SortedIterator<'a, T> {
     /// The list of preconditions being iterated over.
     list: &'a PreconditionList<T>,

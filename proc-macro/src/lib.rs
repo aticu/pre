@@ -1,12 +1,16 @@
-// TODO: remove these
-#![allow(dead_code)]
-#![allow(unreachable_code)]
-#![allow(unused_variables)]
-
 use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
+use proc_macro2::TokenStream as TokenStream2;
+use proc_macro_error::{emit_error, emit_warning, proc_macro_error};
 use quote::quote;
-use syn::{parse_macro_input, ExprCall, ItemFn};
+use std::mem;
+use syn::{
+    parenthesized,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    token::Paren,
+    visit_mut::VisitMut,
+    ExprCall, Item, ItemFn,
+};
 
 use crate::precondition::{Precondition, PreconditionHolds, PreconditionList};
 
@@ -15,10 +19,10 @@ mod precondition;
 cfg_if::cfg_if! {
     if #[cfg(feature = "const-generics-impl")] {
         mod const_generics_impl;
-        use const_generics_impl::{render_assert_precondition, render_pre};
+        use const_generics_impl::{render_assert_pre, render_pre};
     } else if #[cfg(feature = "struct-impl")] {
         mod struct_impl;
-        use struct_impl::{render_assert_precondition, render_pre};
+        use struct_impl::{render_assert_pre, render_pre};
     } else {
         compile_error!("you must choose one of the features providing an implementation")
     }
@@ -98,35 +102,88 @@ cfg_if::cfg_if! {
     doc = "Please note that the examples above cannot be tested when using the `const-generics-impl`"
 )]
 #[cfg_attr(feature = "const-generics-impl", doc = "feature.")]
-#[proc_macro_error]
 #[proc_macro_attribute]
+#[proc_macro_error]
 pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
+    let dummy_function: TokenStream2 = function.clone().into();
+    proc_macro_error::set_dummy(quote! {
+        #dummy_function
+    });
+
     let preconditions = parse_macro_input!(attr as PreconditionList<Precondition>);
     let function = parse_macro_input!(function as ItemFn);
-
-    proc_macro_error::set_dummy(quote! {
-        #function
-    });
 
     let output = render_pre(preconditions, function);
 
     output.into()
 }
 
-/// Assert that a precondition holds.
+/// A visitor for `assert_pre` declarations.
+struct AssertPreVisitor;
+
+/// An `assert_pre` declaration.
+struct AssertPreAttr {
+    /// The parentheses surrounding the attribute.
+    _parentheses: Paren,
+    /// The precondition list in the declaration.
+    preconditions: PreconditionList<PreconditionHolds>,
+}
+
+impl Parse for AssertPreAttr {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        Ok(AssertPreAttr {
+            _parentheses: parenthesized!(content in input),
+            preconditions: content.parse()?,
+        })
+    }
+}
+
+impl VisitMut for AssertPreVisitor {
+    fn visit_expr_call_mut(&mut self, call: &mut ExprCall) {
+        let mut i = 0;
+        while i < call.attrs.len() {
+            if call.attrs[i].path.is_ident("assert_pre") {
+                let attr = call.attrs.remove(i);
+                if let Ok(attr) = syn::parse2::<AssertPreAttr>(attr.tokens.clone())
+                    .map_err(|err| emit_error!(err))
+                {
+                    let mut output = render_assert_pre(attr.preconditions, call.clone());
+                    mem::swap(&mut output, call);
+                }
+            } else {
+                i += 1;
+            }
+        }
+
+        syn::visit_mut::visit_expr_call_mut(self, call);
+    }
+}
+
+/// Check that the `assert_pre` attribute is applied correctly in the enclosing scope.
 ///
-/// For more information see the documentation on the [`pre` macro](attr.pre.html)
+/// This is required, because with the current stable rust compiler, attribute macros cannot be
+/// applied to statements or expressions directly.
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn assert_precondition(attr: TokenStream, call: TokenStream) -> TokenStream {
-    let preconditions = parse_macro_input!(attr as PreconditionList<PreconditionHolds>);
-    let call = parse_macro_input!(call as ExprCall);
-
+pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let dummy_item: TokenStream2 = item.clone().into();
     proc_macro_error::set_dummy(quote! {
-        #call
+        #dummy_item
     });
 
-    let output = render_assert_precondition(preconditions, call);
+    if !attr.is_empty() {
+        let attr: TokenStream2 = attr.into();
+        emit_warning!(attr, "this does not do anything and is ignored");
+    }
+
+    let mut item = parse_macro_input!(item as Item);
+
+    AssertPreVisitor.visit_item_mut(&mut item);
+
+    let output = quote! {
+        #item
+    };
 
     output.into()
 }
