@@ -1,5 +1,0 @@
-error[E0063]: missing field `_custom_must_20point_20to_20_6042_60` in initializer of `read_twice`
-  --> $DIR/fn_precondition_missing.rs:14:9
-   |
-14 |         read_twice(ptr)
-   |         ^^^^^^^^^^ missing `_custom_must_20point_20to_20_6042_60`

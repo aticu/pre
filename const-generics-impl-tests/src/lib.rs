@@ -6,6 +6,7 @@ mod tests {
     fn const_generics_impl_ui_tests() {
         let test_cases = TestCases::new();
 
-        test_cases.compile_fail("tests/compile_fail/*.rs");
+        test_cases.pass(concat!(env!("OUT_DIR"), "/function/pass/*.rs"));
+        test_cases.compile_fail(concat!(env!("OUT_DIR"), "/function/compile_fail/*.rs"));
     }
 }
