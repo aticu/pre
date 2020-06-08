@@ -1,0 +1,10 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+ --> $DIR/missing_check.rs:7:5
+  |
+4 | fn foo() {}
+  | -------- defined here
+...
+7 |     foo()
+  |     ^^^-- supplied 0 arguments
+  |     |
+  |     expected 1 argument

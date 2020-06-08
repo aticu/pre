@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+ --> $DIR/extra_precondition.rs:6:1
+  |
+6 | #[check_pre]
+  | ^^^^^^^^^^^^ expected a tuple with 1 element, found one with 2 elements
+  |
+  = note: expected struct `std::marker::PhantomData<(pre::const_generics_types::CustomConditionHolds<"must be bar">,)>`
+             found struct `std::marker::PhantomData<(pre::const_generics_types::CustomConditionHolds<"must be bar">, pre::const_generics_types::CustomConditionHolds<"must be baz">)>`
+  = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)

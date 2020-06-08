@@ -1,0 +1,17 @@
+error[E0574]: expected struct, variant or union type, found function `foo`
+ --> $DIR/undefined_precondition.rs:8:5
+  |
+8 |     foo()
+  |     ^^^ not a struct, variant or union type
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+ --> $DIR/undefined_precondition.rs:8:5
+  |
+3 | fn foo() {}
+  | -------- defined here
+4 |
+5 | #[check_pre]
+  | ------------ supplied 1 argument
+...
+8 |     foo()
+  |     ^^^ expected 0 arguments
