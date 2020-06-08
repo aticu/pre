@@ -109,3 +109,53 @@ impl PartialEq for PreconditionKind {
 }
 
 impl Eq for PreconditionKind {}
+
+#[cfg(test)]
+mod tests {
+    use quote::quote;
+    use syn::parse2;
+
+    use super::*;
+
+    #[test]
+    fn parse_correct_custom() {
+        let result: Result<PreconditionKind, _> = parse2(quote! {
+            "foo"
+        });
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_correct_valid_ptr() {
+        let result: Result<PreconditionKind, _> = parse2(quote! {
+            valid_ptr(foo)
+        });
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_unknown_keyword() {
+        let result: Result<PreconditionKind, _> = parse2(quote! {
+            unknown_keyword
+        });
+
+        assert!(result.is_err());
+
+        let result: Result<PreconditionKind, _> = parse2(quote! {
+            unknown_keyword("abc")
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_extra_tokens() {
+        let result: Result<PreconditionKind, _> = parse2(quote! {
+            "foo" bar
+        });
+
+        assert!(result.is_err());
+    }
+}

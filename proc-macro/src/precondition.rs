@@ -158,3 +158,98 @@ impl Reason {
             .unwrap_or_else(|| self.reason.span())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use quote::quote;
+    use syn::parse2;
+
+    use super::*;
+
+    #[test]
+    fn parse_correct() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo")
+        });
+
+        let result = result.expect("parsing should succeed");
+
+        assert!(result.reason.is_none());
+        assert!(result.reason().is_none());
+    }
+
+    #[test]
+    fn parse_correct_with_reason() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo", reason = "bar")
+        });
+
+        let result = result.expect("parsing should succeed");
+
+        assert!(result.reason.is_some());
+        assert!(result.reason().is_some());
+    }
+
+    #[test]
+    fn parse_wrong_start() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            ondition("foo")
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_no_parentheses() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition "foo"
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_comma_without_reason() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo",)
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_reason_without_eq() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo", reason)
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_reason_without_litstr() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo", reason =)
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_reason_with_extra_tokens() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo", reason = "bar" abc)
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_extra_tokens() {
+        let result: Result<Precondition, _> = parse2(quote! {
+            condition("foo", reason = "bar") abc
+        });
+
+        assert!(result.is_err());
+    }
+}

@@ -41,7 +41,8 @@ impl<T: Parse> Parse for PreconditionList<T> {
 
 impl<T> PreconditionList<T> {
     /// Provides an iterator over the preconditions.
-    #[allow(dead_code)]
+    ///
+    /// The order of the preconditions is the order in which they were specified
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.preconditions.iter()
     }
@@ -49,6 +50,9 @@ impl<T> PreconditionList<T> {
 
 impl<T: Ord> PreconditionList<T> {
     /// Provides an iterator with a deterministic ordering over the preconditions.
+    ///
+    /// The same preconditions in a different order will result in the same order using this
+    /// iterator.
     #[allow(dead_code)]
     pub(crate) fn sorted_iter(&self) -> impl Iterator<Item = &T> {
         let mut index_vec: Vec<_> = (0..self.preconditions.len()).collect();
@@ -83,5 +87,82 @@ impl<'a, T> Iterator for SortedIterator<'a, T> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.indices.len(), Some(self.indices.len()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use quote::quote;
+    use syn::parse2;
+
+    use super::*;
+    use crate::precondition::Precondition;
+
+    #[test]
+    fn parse_correct() {
+        let result: Result<PreconditionList<Precondition>, _> = parse2(quote! {
+            condition("foo"), condition("bar")
+        });
+
+        let result = result.expect("parsing should work");
+
+        assert_eq!(result.iter().count(), 2);
+    }
+
+    #[test]
+    fn parse_correct_trailing_comma() {
+        let result: Result<PreconditionList<Precondition>, _> = parse2(quote! {
+            condition("foo"), condition("bar"),
+        });
+
+        let result = result.expect("parsing should work");
+
+        assert_eq!(result.iter().count(), 2);
+    }
+
+    #[test]
+    fn iter_order_correct() {
+        let result: Result<PreconditionList<Precondition>, _> = parse2(quote! {
+            condition("5"), condition("4"), condition("3"), condition("2"), condition("1")
+        });
+
+        let result = result.expect("parsing should work");
+
+        assert_eq!(
+            result
+                .iter()
+                .map(|c| format!("{:?}", c))
+                .collect::<Vec<_>>(),
+            (1..=5)
+                .rev()
+                .map(|num| format!("condition(\"{}\")", num))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn iter_sorted_order_correct() {
+        let result1: Result<PreconditionList<Precondition>, _> = parse2(quote! {
+            condition("1"), condition("2"), condition(valid_ptr(three)), condition("4"), condition("5")
+        });
+
+        let result1 = result1.expect("parsing should work");
+
+        let result2: Result<PreconditionList<Precondition>, _> = parse2(quote! {
+            condition("4"), condition("1"), condition("5"), condition(valid_ptr(three)), condition("2")
+        });
+
+        let result2 = result2.expect("parsing should work");
+
+        assert_eq!(
+            result1
+                .sorted_iter()
+                .map(|c| format!("{:?}", c))
+                .collect::<Vec<_>>(),
+            result2
+                .sorted_iter()
+                .map(|c| format!("{:?}", c))
+                .collect::<Vec<_>>(),
+        );
     }
 }
