@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+ --> $DIR/fn_precondition_missing.rs:8:1
+  |
+8 | #[check_pre]
+  | ^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 1 element
+  |
+  = note: expected struct `std::marker::PhantomData<(pre::const_generics_types::ValidPtrConditionHolds<"ptr">, pre::const_generics_types::CustomConditionHolds<"must point to `42`">)>`
+             found struct `std::marker::PhantomData<(pre::const_generics_types::ValidPtrConditionHolds<"ptr">,)>`
+  = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
