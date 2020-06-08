@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
- --> $DIR/fn_precondition_missing.rs:8:1
+ --> $DIR/precondition_missing.rs:8:1
   |
 8 | #[check_pre]
   | ^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 1 element
