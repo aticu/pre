@@ -16,14 +16,14 @@
 //! - the struct must be defined somewhere, which is not possible for a method
 //! - it does not work when
 
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::{parse_quote, Expr, ExprCall, Ident, ItemFn};
+use proc_macro2::{Span, TokenStream};
+use quote::{format_ident, quote, quote_spanned};
+use syn::{parse2, parse_quote, Expr, ExprCall, Ident, ItemFn};
 
 use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
 
 /// Renders a precondition as a `String` representing an identifier.
-pub(crate) fn render_as_ident(precondition: &PreconditionKind) -> Ident {
+pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
     /// Escapes characters that are not valid in identifiers.
     fn escape_non_ident_chars(string: String) -> String {
         string
@@ -36,12 +36,16 @@ pub(crate) fn render_as_ident(precondition: &PreconditionKind) -> Ident {
             .collect()
     }
 
-    match precondition {
+    let mut ident = match precondition.kind() {
         PreconditionKind::ValidPtr { ident, .. } => format_ident!("_valid_ptr_{}", ident),
         PreconditionKind::Custom(string) => {
             format_ident!("_custom_{}", escape_non_ident_chars(string.value()))
         }
-    }
+    };
+
+    ident.set_span(precondition.span());
+
+    ident
 }
 
 /// Generates the code for the function with the precondition handling added.
@@ -53,7 +57,7 @@ pub(crate) fn render_pre(
     let mut preconditions_rendered = quote! {};
 
     for precondition in preconditions.iter() {
-        let precondition_rendered = render_as_ident(&precondition.kind());
+        let precondition_rendered = render_as_ident(&precondition);
 
         preconditions_rendered = quote! {
             #preconditions_rendered
@@ -82,6 +86,7 @@ pub(crate) fn render_pre(
 pub(crate) fn render_assert_pre(
     preconditions: PreconditionList<Precondition>,
     mut call: ExprCall,
+    attr_span: Span,
 ) -> ExprCall {
     let path;
 
@@ -95,7 +100,7 @@ pub(crate) fn render_assert_pre(
     let mut preconditions_rendered = quote! {};
 
     for precondition in preconditions.iter() {
-        let precondition_rendered = render_as_ident(&precondition.kind());
+        let precondition_rendered = render_as_ident(&precondition);
 
         preconditions_rendered = quote! {
             #preconditions_rendered
@@ -103,11 +108,14 @@ pub(crate) fn render_assert_pre(
         };
     }
 
-    call.args.push(parse_quote! {
-        #path {
-            #preconditions_rendered
-        }
-    });
+    call.args.push(
+        parse2(quote_spanned! { attr_span=>
+            #path {
+                #preconditions_rendered
+            }
+        })
+        .expect("parses as an expression"),
+    );
 
     call
 }

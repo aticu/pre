@@ -1,8 +1,7 @@
 error[E0560]: struct `foo` has no field named `_custom_must_20be_20baz`
- --> $DIR/extra_precondition.rs:6:1
-  |
-6 | #[check_pre]
-  | ^^^^^^^^^^^^ `foo` does not have this field
-  |
-  = note: available fields are: `_custom_must_20be_20bar`
-  = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+  --> $DIR/extra_precondition.rs:10:9
+   |
+10 |         condition("must be baz", reason = "is baz")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` does not have this field
+   |
+   = note: available fields are: `_custom_must_20be_20bar`

@@ -10,8 +10,8 @@
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_crate::crate_name;
-use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{parse_quote, ExprCall, Ident, ItemFn, LitStr};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use syn::{parse2, parse_quote, ExprCall, Ident, ItemFn, LitStr};
 
 use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
 
@@ -36,13 +36,13 @@ impl ToTokens for Precondition {
         let pre = get_crate_name();
         match self.kind() {
             PreconditionKind::Custom(string) => {
-                tokens.append_all(quote! {
+                tokens.append_all(quote_spanned! { self.span()=>
                     ::#pre::CustomConditionHolds::<#string>
                 });
             }
             PreconditionKind::ValidPtr { ident, .. } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
-                tokens.append_all(quote! {
+                tokens.append_all(quote_spanned! { self.span()=>
                     ::#pre::ValidPtrConditionHolds::<#ident_lit>
                 });
             }
@@ -68,10 +68,14 @@ pub(crate) fn render_pre(
 pub(crate) fn render_assert_pre(
     preconditions: PreconditionList<Precondition>,
     mut call: ExprCall,
+    attr_span: Span,
 ) -> ExprCall {
-    call.args.push(parse_quote! {
-        ::core::marker::PhantomData::<(#preconditions)>
-    });
+    call.args.push(
+        parse2(quote_spanned! { attr_span=>
+            ::core::marker::PhantomData::<(#preconditions)>
+        })
+        .expect("parses as an expression"),
+    );
 
     call
 }

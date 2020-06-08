@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
     token::Paren,
     visit_mut::VisitMut,
-    ExprCall,
+    Attribute, ExprCall,
 };
 
 use crate::{
@@ -62,8 +62,10 @@ impl VisitMut for AssertPreVisitor {
                     attr_found = true;
                 }
 
-                if let Ok(attr) = syn::parse2(attr.tokens.clone()).map_err(|err| emit_error!(err)) {
-                    process_attribute(attr, call);
+                if let Ok(parsed_attr) =
+                    syn::parse2(attr.tokens.clone()).map_err(|err| emit_error!(err))
+                {
+                    process_attribute(parsed_attr, attr, call);
                 }
             } else {
                 i += 1;
@@ -90,7 +92,7 @@ fn has_unfinished_reason(precondition: &Precondition) -> bool {
 }
 
 /// Process a found `assert_pre` attribute.
-fn process_attribute(attr: AssertPreAttr, call: &mut ExprCall) {
+fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, call: &mut ExprCall) {
     for precondition in attr.preconditions.iter() {
         if precondition.reason().is_none() {
             let missing_reason_span = precondition
@@ -113,6 +115,11 @@ fn process_attribute(attr: AssertPreAttr, call: &mut ExprCall) {
         }
     }
 
-    let mut output = render_assert_pre(attr.preconditions, call.clone());
+    let attr_span = original_attr
+        .pound_token
+        .span
+        .join(original_attr.bracket_token.span)
+        .unwrap_or_else(|| original_attr.bracket_token.span);
+    let mut output = render_assert_pre(attr.preconditions, call.clone(), attr_span);
     mem::swap(&mut output, call);
 }
