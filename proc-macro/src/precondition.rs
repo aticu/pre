@@ -1,9 +1,11 @@
 //! Defines what a precondition is and how it's parsed.
 
+use proc_macro2::Span;
 use std::{cmp::Ordering, fmt};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
+    spanned::Spanned,
     token::Paren,
     LitStr, Token,
 };
@@ -29,6 +31,10 @@ pub(crate) struct Precondition {
     _parentheses: Paren,
     /// The kind of precondition.
     kind: PreconditionKind,
+    /// The span before the reason.
+    ///
+    /// This is useful for reporting where to insert a reason in case its missing.
+    before_reason_span: Span,
     /// The reason why the precondition holds.
     reason: Option<Reason>,
 }
@@ -51,6 +57,7 @@ impl Parse for Precondition {
             _condition_keyword: input.parse()?,
             _parentheses: parenthesized!(content in input),
             kind: content.parse()?,
+            before_reason_span: content.span(),
             reason: Reason::parse(&content)?,
         })
     }
@@ -60,6 +67,33 @@ impl Precondition {
     /// Returns the kind of the precondition.
     pub(crate) fn kind(&self) -> &PreconditionKind {
         &self.kind
+    }
+
+    /// Returns the reason the precondition holds.
+    pub(crate) fn reason(&self) -> Option<&LitStr> {
+        self.reason.as_ref().map(|r| &r.reason)
+    }
+
+    /// Returns the span of precondition.
+    pub(crate) fn span(&self) -> Span {
+        self._condition_keyword
+            .span()
+            .join(
+                self.reason
+                    .as_ref()
+                    .map(|r| r.span())
+                    .unwrap_or_else(|| self._parentheses.span),
+            )
+            .unwrap_or_else(|| self._parentheses.span)
+    }
+
+    /// The span where to insert a reason, if it's missing.
+    pub(crate) fn missing_reason_span(&self) -> Option<Span> {
+        if self.reason.is_some() {
+            None
+        } else {
+            Some(self.before_reason_span)
+        }
     }
 }
 
@@ -84,7 +118,7 @@ impl PartialEq for Precondition {
 impl Eq for Precondition {}
 
 /// A reason describing why a precondition holds.
-pub(crate) struct Reason {
+struct Reason {
     /// The `,` separating the condition and the reason.
     _comma: Token![,],
     /// The `reason` keyword.
@@ -102,6 +136,7 @@ impl fmt::Debug for Reason {
 }
 
 impl Reason {
+    /// Parses a reason for why a precondition holds.
     fn parse(input: ParseStream) -> syn::Result<Option<Self>> {
         if input.is_empty() {
             Ok(None)
@@ -113,5 +148,13 @@ impl Reason {
                 reason: input.parse()?,
             }))
         }
+    }
+
+    /// Returns the span of the reason.
+    fn span(&self) -> Span {
+        self._comma
+            .span()
+            .join(self.reason.span())
+            .unwrap_or_else(|| self.reason.span())
     }
 }

@@ -1,28 +1,24 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use proc_macro_error::{emit_error, emit_warning, proc_macro_error};
+use proc_macro_error::{emit_warning, proc_macro_error};
 use quote::quote;
-use std::mem;
-use syn::{
-    parenthesized,
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    token::Paren,
-    visit_mut::VisitMut,
-    ExprCall, Item, ItemFn,
+use syn::{parse_macro_input, visit_mut::VisitMut, Item, ItemFn};
+
+use crate::{
+    assert_pre::AssertPreVisitor,
+    precondition::{Precondition, PreconditionList},
 };
 
-use crate::precondition::{Precondition, PreconditionList};
-
+mod assert_pre;
 mod precondition;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "const-generics-impl")] {
         mod const_generics_impl;
-        use const_generics_impl::{render_assert_pre, render_pre};
+        pub(crate) use crate::const_generics_impl::{render_assert_pre, render_pre};
     } else if #[cfg(feature = "struct-impl")] {
         mod struct_impl;
-        use struct_impl::{render_assert_pre, render_pre};
+        pub(crate) use crate::struct_impl::{render_assert_pre, render_pre};
     } else {
         compile_error!("you must choose one of the features providing an implementation")
     }
@@ -115,49 +111,13 @@ pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
 
     let output = render_pre(preconditions, function);
 
+    // Reset the dummy here, in case errors were emitted in `render_pre`.
+    // This will use the most up-to-date version of the function.
+    proc_macro_error::set_dummy(quote! {
+        #dummy_function
+    });
+
     output.into()
-}
-
-/// A visitor for `assert_pre` declarations.
-struct AssertPreVisitor;
-
-/// An `assert_pre` declaration.
-struct AssertPreAttr {
-    /// The parentheses surrounding the attribute.
-    _parentheses: Paren,
-    /// The precondition list in the declaration.
-    preconditions: PreconditionList<Precondition>,
-}
-
-impl Parse for AssertPreAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        Ok(AssertPreAttr {
-            _parentheses: parenthesized!(content in input),
-            preconditions: content.parse()?,
-        })
-    }
-}
-
-impl VisitMut for AssertPreVisitor {
-    fn visit_expr_call_mut(&mut self, call: &mut ExprCall) {
-        let mut i = 0;
-        while i < call.attrs.len() {
-            if call.attrs[i].path.is_ident("assert_pre") {
-                let attr = call.attrs.remove(i);
-                if let Ok(attr) = syn::parse2::<AssertPreAttr>(attr.tokens.clone())
-                    .map_err(|err| emit_error!(err))
-                {
-                    let mut output = render_assert_pre(attr.preconditions, call.clone());
-                    mem::swap(&mut output, call);
-                }
-            } else {
-                i += 1;
-            }
-        }
-
-        syn::visit_mut::visit_expr_call_mut(self, call);
-    }
 }
 
 /// Check that the `assert_pre` attribute is applied correctly in the enclosing scope.
@@ -184,6 +144,12 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
     let output = quote! {
         #item
     };
+
+    // Reset the dummy here, in case errors were emitted in visiting the syntax tree.
+    // This will use the most up-to-date version of the function.
+    proc_macro_error::set_dummy(quote! {
+        #output
+    });
 
     output.into()
 }
