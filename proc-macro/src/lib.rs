@@ -12,7 +12,7 @@ use syn::{
     ExprCall, Item, ItemFn,
 };
 
-use crate::precondition::{Precondition, PreconditionHolds, PreconditionList};
+use crate::precondition::{Precondition, PreconditionList};
 
 mod precondition;
 
@@ -57,7 +57,7 @@ cfg_if::cfg_if! {
 /// #
 /// let slice = &[1, 2, 3];
 /// unsafe {
-///     #[assert_precondition(holds("slice.len() >= 2", reason = "slice.len() == 3"))]
+///     #[assert_pre(condition("slice.len() >= 2", reason = "slice.len() == 3"))]
 ///     get_second_element_unchecked(slice)
 /// };
 /// ```
@@ -92,7 +92,7 @@ cfg_if::cfg_if! {
 /// #
 /// let slice = &[1];
 /// unsafe {
-///     #[assert_precondition(holds("slice.len() >= 1", reason = "slice.len() == 1"))]
+///     #[assert_pre(condition("slice.len() >= 1", reason = "slice.len() == 1"))]
 ///     get_second_element_unchecked(slice)
 /// };
 /// ```
@@ -126,7 +126,7 @@ struct AssertPreAttr {
     /// The parentheses surrounding the attribute.
     _parentheses: Paren,
     /// The precondition list in the declaration.
-    preconditions: PreconditionList<PreconditionHolds>,
+    preconditions: PreconditionList<Precondition>,
 }
 
 impl Parse for AssertPreAttr {

@@ -20,7 +20,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_quote, Expr, ExprCall, Ident, ItemFn};
 
-use crate::precondition::{Precondition, PreconditionHolds, PreconditionKind, PreconditionList};
+use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
 
 /// Renders a precondition as a `String` representing an identifier.
 pub(crate) fn render_as_ident(precondition: &PreconditionKind) -> Ident {
@@ -80,7 +80,7 @@ pub(crate) fn render_pre(
 
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_pre(
-    preconditions: PreconditionList<PreconditionHolds>,
+    preconditions: PreconditionList<Precondition>,
     mut call: ExprCall,
 ) -> ExprCall {
     let path;

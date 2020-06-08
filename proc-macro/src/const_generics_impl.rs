@@ -13,7 +13,7 @@ use proc_macro_crate::crate_name;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_quote, ExprCall, Ident, ItemFn, LitStr};
 
-use crate::precondition::{Precondition, PreconditionHolds, PreconditionKind, PreconditionList};
+use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
 
 /// Returns the name of the main crate.
 fn get_crate_name() -> Ident {
@@ -64,28 +64,9 @@ pub(crate) fn render_pre(
     }
 }
 
-impl ToTokens for PreconditionHolds {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let pre = get_crate_name();
-        match self.kind() {
-            PreconditionKind::Custom(string) => {
-                tokens.append_all(quote! {
-                    ::#pre::CustomConditionHolds::<#string>
-                });
-            }
-            PreconditionKind::ValidPtr { ident, .. } => {
-                let ident_lit = LitStr::new(&ident.to_string(), ident.span());
-                tokens.append_all(quote! {
-                    ::#pre::ValidPtrConditionHolds::<#ident_lit>
-                });
-            }
-        }
-    }
-}
-
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_pre(
-    preconditions: PreconditionList<PreconditionHolds>,
+    preconditions: PreconditionList<Precondition>,
     mut call: ExprCall,
 ) -> ExprCall {
     call.args.push(parse_quote! {

@@ -18,7 +18,6 @@ mod custom_keywords {
     use syn::custom_keyword;
 
     custom_keyword!(condition);
-    custom_keyword!(holds);
     custom_keyword!(reason);
 }
 
@@ -30,11 +29,17 @@ pub(crate) struct Precondition {
     _parentheses: Paren,
     /// The kind of precondition.
     kind: PreconditionKind,
+    /// The reason why the precondition holds.
+    reason: Option<Reason>,
 }
 
 impl fmt::Debug for Precondition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "condition({:?})", self.kind)
+        if let Some(reason) = &self.reason {
+            write!(f, "condition({:?}, reason = {:?})", self.kind, reason)
+        } else {
+            write!(f, "condition({:?})", self.kind)
+        }
     }
 }
 
@@ -46,6 +51,7 @@ impl Parse for Precondition {
             _condition_keyword: input.parse()?,
             _parentheses: parenthesized!(content in input),
             kind: content.parse()?,
+            reason: Reason::parse(&content)?,
         })
     }
 }
@@ -77,14 +83,8 @@ impl PartialEq for Precondition {
 
 impl Eq for Precondition {}
 
-/// A declaration that a precondition holds.
-pub(crate) struct PreconditionHolds {
-    /// The `condition` keyword.
-    _condition_keyword: custom_keywords::holds,
-    /// The parentheses following the `condition` keyword.
-    _parentheses: Paren,
-    /// The kind of precondition.
-    kind: PreconditionKind,
+/// A reason describing why a precondition holds.
+pub(crate) struct Reason {
     /// The `,` separating the condition and the reason.
     _comma: Token![,],
     /// The `reason` keyword.
@@ -95,56 +95,23 @@ pub(crate) struct PreconditionHolds {
     reason: LitStr,
 }
 
-impl fmt::Debug for PreconditionHolds {
+impl fmt::Debug for Reason {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "holds({:?}, reason = {})",
-            self.kind,
-            self.reason.value()
-        )
+        write!(f, "{:?}", self.reason.value())
     }
 }
 
-impl Parse for PreconditionHolds {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-
-        Ok(PreconditionHolds {
-            _condition_keyword: input.parse()?,
-            _parentheses: parenthesized!(content in input),
-            kind: content.parse()?,
-            _comma: content.parse()?,
-            _reason_keyword: content.parse()?,
-            _eq: content.parse()?,
-            reason: content.parse()?,
-        })
+impl Reason {
+    fn parse(input: ParseStream) -> syn::Result<Option<Self>> {
+        if input.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(Self {
+                _comma: input.parse()?,
+                _reason_keyword: input.parse()?,
+                _eq: input.parse()?,
+                reason: input.parse()?,
+            }))
+        }
     }
 }
-
-impl PreconditionHolds {
-    /// Returns the kind of the precondition.
-    pub(crate) fn kind(&self) -> &PreconditionKind {
-        &self.kind
-    }
-}
-
-impl Ord for PreconditionHolds {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.kind().cmp(other.kind())
-    }
-}
-
-impl PartialOrd for PreconditionHolds {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for PreconditionHolds {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-
-impl Eq for PreconditionHolds {}

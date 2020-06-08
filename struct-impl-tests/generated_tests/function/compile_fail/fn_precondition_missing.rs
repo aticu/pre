@@ -10,7 +10,7 @@ fn main() {
     let ptr: *const i32 = &42;
 
     let (_, _) = unsafe {
-        #[assert_pre(holds(valid_ptr(ptr), reason = "`ptr` comes from a reference"))]
+        #[assert_pre(condition(valid_ptr(ptr), reason = "`ptr` comes from a reference"))]
         read_twice(ptr)
     };
 }
