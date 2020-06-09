@@ -107,6 +107,8 @@ pub use pre_proc_macro::pre;
 /// ```
 pub use pre_proc_macro::check_pre;
 
+pub use pre_proc_macro::def_pre;
+
 #[cfg(feature = "const-generics-impl")]
 mod const_generics_types;
 

@@ -39,12 +39,12 @@ pub(crate) struct Precondition {
     reason: Option<Reason>,
 }
 
-impl fmt::Debug for Precondition {
+impl fmt::Display for Precondition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(reason) = &self.reason {
-            write!(f, "condition({:?}, reason = {:?})", self.kind, reason)
+            write!(f, "condition({}, reason = {})", self.kind, reason)
         } else {
-            write!(f, "condition({:?})", self.kind)
+            write!(f, "condition({})", self.kind)
         }
     }
 }
@@ -129,7 +129,7 @@ struct Reason {
     reason: LitStr,
 }
 
-impl fmt::Debug for Reason {
+impl fmt::Display for Reason {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.reason.value())
     }

@@ -31,7 +31,7 @@ pub(crate) enum PreconditionKind {
     Custom(LitStr),
 }
 
-impl fmt::Debug for PreconditionKind {
+impl fmt::Display for PreconditionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PreconditionKind::ValidPtr {

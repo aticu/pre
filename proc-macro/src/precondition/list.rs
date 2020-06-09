@@ -13,17 +13,17 @@ pub(crate) struct PreconditionList<T> {
     preconditions: Punctuated<T, Token![,]>,
 }
 
-impl<T: fmt::Debug> fmt::Debug for PreconditionList<T> {
+impl<T: fmt::Display> fmt::Display for PreconditionList<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut first = true;
 
         for precondition in self.preconditions.iter() {
             if first {
-                write!(f, "{:?}", precondition)?;
+                write!(f, "{}", precondition)?;
 
                 first = false;
             } else {
-                write!(f, ", {:?}", precondition)?;
+                write!(f, ", {}", precondition)?;
             }
         }
 
