@@ -10,7 +10,7 @@ use syn::{parse_macro_input, visit_mut::VisitMut, Item, ItemFn};
 
 use crate::{
     assert_pre::AssertPreVisitor,
-    def::DefPreAttr,
+    def::{DefPreAttr, DefPreModule},
     precondition::{Precondition, PreconditionList},
 };
 
@@ -87,9 +87,16 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_error]
 pub fn def_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr = parse_macro_input!(attr as DefPreAttr);
+    let item = parse_macro_input!(item as DefPreModule);
 
     println!("{}", attr);
     println!("{}", item);
 
-    item
+    println!("---------------------------------");
+
+    let output = item.render(attr);
+
+    println!("{}", output);
+
+    output.into()
 }

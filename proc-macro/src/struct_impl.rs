@@ -56,18 +56,21 @@ pub(crate) fn render_pre(
     let function_name = function.sig.ident.clone();
     let mut preconditions_rendered = quote! {};
 
+    let vis = &function.vis;
+
     for precondition in preconditions.iter() {
         let precondition_rendered = render_as_ident(&precondition);
 
         preconditions_rendered = quote! {
             #preconditions_rendered
-            #precondition_rendered: (),
+            #vis #precondition_rendered: (),
         };
     }
 
     let struct_def = quote! {
         #[allow(non_camel_case_types)]
-        struct #function_name {
+        #[allow(non_snake_case)]
+        #vis struct #function_name {
             #preconditions_rendered
         }
     };
