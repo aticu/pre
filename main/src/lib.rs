@@ -107,6 +107,7 @@ pub use pre_proc_macro::pre;
 /// ```
 pub use pre_proc_macro::check_pre;
 
+/// Provide preconditions for items in a different crate.
 pub use pre_proc_macro::def_pre;
 
 #[cfg(feature = "const-generics-impl")]

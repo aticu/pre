@@ -17,6 +17,7 @@
 //! - it does not work when
 
 use proc_macro2::{Span, TokenStream};
+use proc_macro_error::emit_error;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse2, parse_quote, Expr, ExprCall, Ident, ItemFn};
 
@@ -96,10 +97,15 @@ pub(crate) fn render_assert_pre(
     if let Expr::Path(p) = *call.func.clone() {
         path = p;
     } else {
-        proc_macro_error::abort_call_site!(
-            "unable to determine at compile time which function is being called"
+        emit_error!(
+            call.func,
+            "unable to determine at compile time which function is being called";
+            help = "use a direct path to the function instead"
         );
+
+        return call;
     }
+
     let mut preconditions_rendered = quote! {};
 
     for precondition in preconditions.iter() {

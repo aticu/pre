@@ -82,7 +82,6 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
     output.into()
 }
 
-/// Provide preconditions for items in a different crate.
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn def_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
