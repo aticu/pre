@@ -150,7 +150,11 @@ impl DefPreModule {
             if let Visibility::Public(pub_keyword) = local_vis {
                 quote! { #pub_keyword }
             } else {
-                quote_spanned! { local_vis.span()=> pub(crate) }
+                let span = match local_vis {
+                    Visibility::Inherited => self.mod_token.span(),
+                    _ => local_vis.span(),
+                };
+                quote_spanned! { span=> pub(crate) }
             }
         };
 
@@ -202,7 +206,10 @@ fn render_function(
 ) {
     tokens.append_all(&function.attrs);
     tokens.append_all(quote_spanned! { function.span()=> #[inline(always)] });
-    tokens.append_all(quote! { #visibility });
+    tokens.append_all(visibility.clone().into_iter().map(|mut token| {
+        token.set_span(function.span());
+        token
+    }));
     let signature = &function.sig;
     tokens.append_all(quote! { #signature });
 
@@ -210,6 +217,14 @@ fn render_function(
         ident: function.sig.ident.clone(),
         arguments: PathArguments::None,
     });
+
+    // Update the spans of the `::` tokens to lie in the function
+    for (_segment, punct) in path.segments.pairs_mut().map(|p| p.into_tuple()) {
+        if let Some(punct) = punct {
+            punct.spans[0] = function.span();
+            punct.spans[1] = function.span();
+        }
+    }
 
     let mut args_list = TokenStream::new();
     args_list.append_separated(

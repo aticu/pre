@@ -89,14 +89,7 @@ pub fn def_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr = parse_macro_input!(attr as DefPreAttr);
     let item = parse_macro_input!(item as DefPreModule);
 
-    println!("{}", attr);
-    println!("{}", item);
-
-    println!("---------------------------------");
-
     let output = item.render(attr);
-
-    println!("{}", output);
 
     output.into()
 }
