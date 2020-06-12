@@ -10,14 +10,26 @@
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_crate::crate_name;
+use proc_macro_error::abort_call_site;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use std::env;
 use syn::{parse2, parse_quote, ExprCall, Ident, ItemFn, LitStr};
 
 use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
 
 /// Returns the name of the main crate.
 fn get_crate_name() -> Ident {
-    let name = crate_name("pre").expect("crate `pre` must be imported");
+    let name = match crate_name("pre") {
+        Ok(name) => name,
+        Err(err) => match env::var("CARGO_PKG_NAME") {
+            // This allows for writing documentation tests on the functions themselves.
+            //
+            // This *may* lead to false positives, if someone also names their crate `pre`, however
+            // it will very likely fail to compile at a later stage then.
+            Ok(val) if val == "pre" => "pre".into(),
+            _ => abort_call_site!("crate `pre` must be imported: {}", err),
+        },
+    };
     Ident::new(&name, Span::call_site())
 }
 

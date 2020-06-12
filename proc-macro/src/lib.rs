@@ -1,3 +1,7 @@
+//! This crate contains the implementation for attributes used in the `pre` crate.
+//!
+//! Refer to the documentation of the `pre` crate for more information.
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{emit_warning, proc_macro_error};
@@ -24,80 +28,6 @@ cfg_if::cfg_if! {
     }
 }
 
-/// Allows specifing preconditions on function definitions.
-///
-/// This is most useful for `unsafe` functions, which are used to ["declare the existence of
-/// contracts the compiler can't
-/// check"](https://doc.rust-lang.org/nomicon/safe-unsafe-meaning.html) for the function.
-///
-/// Using the `pre` macro, these contracts can be declared:
-#[cfg_attr(not(feature = "const-generics-impl"), doc = "```rust")]
-#[cfg_attr(feature = "const-generics-impl", doc = "```rust,ignore")]
-/// # use pre_proc_macro::pre;
-/// #[pre(condition("slice.len() >= 2"))]
-/// unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
-///     slice.get_unchecked(1)
-/// }
-/// ```
-///
-/// Callers are then forced to specify these contracts when calling the function:
-#[cfg_attr(not(feature = "const-generics-impl"), doc = "```rust")]
-#[cfg_attr(feature = "const-generics-impl", doc = "```rust,ignore")]
-/// # #![feature(proc_macro_hygiene)]
-/// # #![feature(stmt_expr_attributes)]
-/// # use pre_proc_macro::{pre, assert_precondition};
-/// # #[pre(condition("slice.len() >= 2"))]
-/// # unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
-/// #     slice.get_unchecked(1)
-/// # }
-/// #
-/// let slice = &[1, 2, 3];
-/// unsafe {
-///     #[assert_pre(condition("slice.len() >= 2", reason = "slice.len() == 3"))]
-///     get_second_element_unchecked(slice)
-/// };
-/// ```
-///
-/// If the contracts are not specified, compilation will fail:
-#[cfg_attr(not(feature = "const-generics-impl"), doc = "```rust,compile_fail")]
-#[cfg_attr(feature = "const-generics-impl", doc = "```rust,ignore")]
-/// # #![feature(proc_macro_hygiene)]
-/// # #![feature(stmt_expr_attributes)]
-/// # use pre_proc_macro::{pre, assert_precondition};
-/// # #[pre(condition("slice.len() >= 2"))]
-/// # unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
-/// #     slice.get_unchecked(1)
-/// # }
-/// #
-/// let slice = &[1, 2, 3];
-/// unsafe {
-///     get_second_element_unchecked(slice)
-/// };
-/// ```
-///
-/// If the contracts mismatch, compilation will also fail:
-#[cfg_attr(not(feature = "const-generics-impl"), doc = "```rust,compile_fail")]
-#[cfg_attr(feature = "const-generics-impl", doc = "```rust,ignore")]
-/// # #![feature(proc_macro_hygiene)]
-/// # #![feature(stmt_expr_attributes)]
-/// # use pre_proc_macro::{pre, assert_precondition};
-/// # #[pre(condition("slice.len() >= 2"))]
-/// # unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
-/// #     slice.get_unchecked(1)
-/// # }
-/// #
-/// let slice = &[1];
-/// unsafe {
-///     #[assert_pre(condition("slice.len() >= 1", reason = "slice.len() == 1"))]
-///     get_second_element_unchecked(slice)
-/// };
-/// ```
-#[cfg_attr(feature = "const-generics-impl", doc = "")]
-#[cfg_attr(
-    feature = "const-generics-impl",
-    doc = "Please note that the examples above cannot be tested when using the `const-generics-impl`"
-)]
-#[cfg_attr(feature = "const-generics-impl", doc = "feature.")]
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
@@ -112,7 +42,7 @@ pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
     let output = render_pre(preconditions, function);
 
     // Reset the dummy here, in case errors were emitted in `render_pre`.
-    // This will use the most up-to-date version of the function.
+    // This will use the most up-to-date version of the generated code.
     proc_macro_error::set_dummy(quote! {
         #dummy_function
     });
@@ -120,10 +50,6 @@ pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
     output.into()
 }
 
-/// Check that the `assert_pre` attribute is applied correctly in the enclosing scope.
-///
-/// This is required, because with the current stable rust compiler, attribute macros cannot be
-/// applied to statements or expressions directly.
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -146,7 +72,7 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     // Reset the dummy here, in case errors were emitted in visiting the syntax tree.
-    // This will use the most up-to-date version of the function.
+    // This will use the most up-to-date version of the generated code.
     proc_macro_error::set_dummy(quote! {
         #output
     });
