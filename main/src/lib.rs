@@ -1,6 +1,6 @@
 #![allow(clippy::needless_doctest_main)]
-#![cfg_attr(feature = "const-generics-impl", feature(const_generics))]
-#![cfg_attr(feature = "const-generics-impl", allow(incomplete_features))]
+#![cfg_attr(nightly, feature(const_generics))]
+#![cfg_attr(nightly, allow(incomplete_features))]
 
 /// Allows specifing preconditions on function definitions.
 ///
@@ -111,9 +111,9 @@ pub use pre_proc_macro::check_pre;
 /// Provide preconditions for items in a different crate.
 pub use pre_proc_macro::def_pre;
 
-#[cfg(feature = "const-generics-impl")]
+#[cfg(nightly)]
 mod const_generics_types;
 
-#[cfg(feature = "const-generics-impl")]
+#[cfg(nightly)]
 #[doc(hidden)]
 pub use const_generics_types::*;

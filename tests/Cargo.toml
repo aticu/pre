@@ -1,0 +1,13 @@
+[package]
+name = "pre-tests"
+version = "0.0.0"
+authors = ["aticu <15schnic@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dev-dependencies]
+pre = { path = "../main" }
+trybuild = { version = "1.0", features = ["diff"] }
+
+[build-dependencies]
+rustc_version = "0.2"

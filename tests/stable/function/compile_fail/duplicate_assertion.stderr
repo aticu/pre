@@ -1,7 +1,8 @@
 error: duplicate assert_pre attribute found
+
+  = help: combine the list of conditions into one attribute
+
  --> $DIR/duplicate_assertion.rs:9:5
   |
 9 |     #[assert_pre(condition("must be bar", reason = "is really bar"))]
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = help: combine the list of conditions into one attribute

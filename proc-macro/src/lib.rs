@@ -19,14 +19,12 @@ mod def;
 mod precondition;
 
 cfg_if::cfg_if! {
-    if #[cfg(feature = "const-generics-impl")] {
+    if #[cfg(nightly)] {
         mod const_generics_impl;
         pub(crate) use crate::const_generics_impl::{render_assert_pre, render_pre};
-    } else if #[cfg(feature = "struct-impl")] {
+    } else {
         mod struct_impl;
         pub(crate) use crate::struct_impl::{render_assert_pre, render_pre};
-    } else {
-        compile_error!("you must choose one of the features providing an implementation")
     }
 }
 

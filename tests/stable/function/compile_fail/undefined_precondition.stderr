@@ -10,7 +10,8 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 3 |   fn foo() {}
   |   -------- defined here
 ...
-7 | /     #[assert_pre(condition("must be bar", reason = "is bar"))]
+7 |       #[assert_pre(condition("must be bar", reason = "is bar"))]
+  |  ______-
 8 | |     foo()
   | |     ^^-
   | |_____|_|

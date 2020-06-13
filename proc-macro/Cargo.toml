@@ -15,7 +15,5 @@ proc-macro-error = "1.0"
 proc-macro-crate = "0.1"
 cfg-if = "0.1"
 
-[features]
-default = []
-struct-impl = []
-const-generics-impl = []
+[build-dependencies]
+rustc_version = "0.2"
