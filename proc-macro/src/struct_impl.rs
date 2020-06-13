@@ -21,7 +21,7 @@ use proc_macro_error::emit_error;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse2, parse_quote, Expr, ExprCall, Ident, ItemFn};
 
-use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
+use crate::precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList};
 
 /// Renders a precondition as a `String` representing an identifier.
 pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
@@ -38,7 +38,17 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
     }
 
     let mut ident = match precondition.kind() {
-        PreconditionKind::ValidPtr { ident, .. } => format_ident!("_valid_ptr_{}", ident),
+        PreconditionKind::ValidPtr {
+            ident, read_write, ..
+        } => format_ident!(
+            "_valid_ptr_{}_{}",
+            ident,
+            match read_write {
+                ReadWrite::Read { .. } => "r",
+                ReadWrite::Write { .. } => "w",
+                ReadWrite::Both { .. } => "rw",
+            }
+        ),
         PreconditionKind::Custom(string) => {
             format_ident!("_custom_{}", escape_non_ident_chars(string.value()))
         }

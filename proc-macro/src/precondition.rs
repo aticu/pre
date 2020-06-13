@@ -12,7 +12,7 @@ use syn::{
 
 pub(crate) use self::{kind::PreconditionKind, list::PreconditionList};
 
-mod kind;
+pub(crate) mod kind;
 mod list;
 
 /// The custom keywords used in preconditions.

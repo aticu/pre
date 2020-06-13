@@ -13,9 +13,9 @@ use proc_macro_crate::crate_name;
 use proc_macro_error::abort_call_site;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use std::env;
-use syn::{parse2, parse_quote, ExprCall, Ident, ItemFn, LitStr};
+use syn::{parse2, parse_quote, spanned::Spanned, ExprCall, Ident, ItemFn, LitStr};
 
-use crate::precondition::{Precondition, PreconditionKind, PreconditionList};
+use crate::precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList};
 
 /// Returns the name of the main crate.
 fn get_crate_name() -> Ident {
@@ -52,10 +52,17 @@ impl ToTokens for Precondition {
                     ::#pre::CustomConditionHolds::<#string>
                 });
             }
-            PreconditionKind::ValidPtr { ident, .. } => {
+            PreconditionKind::ValidPtr {
+                ident, read_write, ..
+            } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
+                let rw_str = match read_write {
+                    ReadWrite::Read { .. } => LitStr::new("r", read_write.span()),
+                    ReadWrite::Write { .. } => LitStr::new("w", read_write.span()),
+                    ReadWrite::Both { .. } => LitStr::new("r+w", read_write.span()),
+                };
                 tokens.append_all(quote_spanned! { self.span()=>
-                    ::#pre::ValidPtrConditionHolds::<#ident_lit>
+                    ::#pre::ValidPtrConditionHolds::<#ident_lit, #rw_str>
                 });
             }
         }

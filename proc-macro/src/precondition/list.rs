@@ -129,10 +129,7 @@ mod tests {
         let result = result.expect("parsing should work");
 
         assert_eq!(
-            result
-                .iter()
-                .map(|c| format!("{:?}", c))
-                .collect::<Vec<_>>(),
+            result.iter().map(|c| format!("{}", c)).collect::<Vec<_>>(),
             (1..=5)
                 .rev()
                 .map(|num| format!("condition(\"{}\")", num))
@@ -143,13 +140,13 @@ mod tests {
     #[test]
     fn iter_sorted_order_correct() {
         let result1: Result<PreconditionList<Precondition>, _> = parse2(quote! {
-            condition("1"), condition("2"), condition(valid_ptr(three)), condition("4"), condition("5")
+            condition("1"), condition("2"), condition(valid_ptr(three, r+w)), condition("4"), condition("5")
         });
 
         let result1 = result1.expect("parsing should work");
 
         let result2: Result<PreconditionList<Precondition>, _> = parse2(quote! {
-            condition("4"), condition("1"), condition("5"), condition(valid_ptr(three)), condition("2")
+            condition("4"), condition("1"), condition("5"), condition(valid_ptr(three, r+w)), condition("2")
         });
 
         let result2 = result2.expect("parsing should work");
@@ -157,11 +154,11 @@ mod tests {
         assert_eq!(
             result1
                 .sorted_iter()
-                .map(|c| format!("{:?}", c))
+                .map(|c| format!("{}", c))
                 .collect::<Vec<_>>(),
             result2
                 .sorted_iter()
-                .map(|c| format!("{:?}", c))
+                .map(|c| format!("{}", c))
                 .collect::<Vec<_>>(),
         );
     }
