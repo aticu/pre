@@ -1,20 +1,21 @@
 # pre
 
-`pre` is a work in progress [Rust](https://www.rust-lang.org/) library that allows annotating functions and their call sites with preconditions and makes sure they match.
+`pre` is a work in progress [Rust](https://www.rust-lang.org/) crate that allows annotating functions and their call sites with preconditions and makes sure they match.
 It is mostly intended for use with `unsafe` functions, as they have preconditions that cannot be checked at compile-time.
-The main feature of `pre` is that code that is probably incorrect will not compile.
+The main feature of `pre` is that probably incorrect code will not compile.
 
 ```rust
-#[pre(valid_ptr(ptr))]
+#[pre(condition(valid_ptr(ptr)))]
 unsafe fn read_twice<T: Copy>(ptr: *const T) -> (T, T) {
     (std::ptr::read(ptr), std::ptr::read(ptr))
 }
 
+#[check_pre]
 fn main() {
     let ptr: *const i32 = &42;
 
     let (a, b) = unsafe {
-        #[assert_pre(valid_ptr("ptr"), reason = "the pointer is created from a reference")]
+        #[assert_pre(condition(valid_ptr("ptr"), reason = "the pointer is created from a reference"))]
         read_twice(ptr)
     };
 
