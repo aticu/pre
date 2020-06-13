@@ -137,7 +137,15 @@ impl DefStatement {
                         Pair::Punctuated(segment, punct) => {
                             Pair::Punctuated(segment.clone(), punct.clone())
                         }
-                        Pair::End(segment) => Pair::Punctuated(segment.clone(), Default::default()),
+                        Pair::End(segment) => {
+                            if resulting_path.path.segments.len() > from.segments.len() {
+                                // If there is more path to come, don't put the end into the
+                                // iterator yet. The next iterator will take care of the end.
+                                Pair::Punctuated(segment.clone(), Default::default())
+                            } else {
+                                Pair::End(segment.clone())
+                            }
+                        }
                     })
                     .chain(
                         resulting_path
