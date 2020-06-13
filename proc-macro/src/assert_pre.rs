@@ -135,7 +135,7 @@ impl DefStatement {
                     .pairs()
                     .map(|pair| match pair {
                         Pair::Punctuated(segment, punct) => {
-                            Pair::Punctuated(segment.clone(), punct.clone())
+                            Pair::Punctuated(segment.clone(), *punct)
                         }
                         Pair::End(segment) => {
                             if resulting_path.path.segments.len() > from.segments.len() {
@@ -154,7 +154,7 @@ impl DefStatement {
                             .pairs()
                             .map(|pair| match pair {
                                 Pair::Punctuated(segment, punct) => {
-                                    Pair::Punctuated(segment.clone(), punct.clone())
+                                    Pair::Punctuated(segment.clone(), *punct)
                                 }
                                 Pair::End(segment) => Pair::End(segment.clone()),
                             })
@@ -206,10 +206,10 @@ impl Parse for DefStatementSite {
 }
 
 /// The reason to display in the hint where to add the reason.
-const HINT_REASON: &'static str = "why does this hold?";
+const HINT_REASON: &str = "why does this hold?";
 
 /// The name of the macro used to assert that a condition holds.
-const ASSERT_CONDITION_HOLDS_ATTR: &'static str = "assert_pre";
+const ASSERT_CONDITION_HOLDS_ATTR: &str = "assert_pre";
 
 /// A visitor for `assert_pre` declarations.
 pub(crate) struct AssertPreVisitor;

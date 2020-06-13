@@ -51,14 +51,19 @@ impl fmt::Display for Precondition {
 
 impl Parse for Precondition {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let condition_keyword = input.parse()?;
         let content;
+        let parentheses = parenthesized!(content in input);
+        let kind = content.parse()?;
+        let before_reason_span = content.span();
+        let reason = Reason::parse(&content)?;
 
         Ok(Precondition {
-            _condition_keyword: input.parse()?,
-            _parentheses: parenthesized!(content in input),
-            kind: content.parse()?,
-            before_reason_span: content.span(),
-            reason: Reason::parse(&content)?,
+            _condition_keyword: condition_keyword,
+            _parentheses: parentheses,
+            kind,
+            before_reason_span,
+            reason,
         })
     }
 }

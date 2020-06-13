@@ -31,7 +31,7 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
             .chars()
             .map(|c| match c {
                 '0'..='9' | 'a'..='z' | 'A'..='Z' => c.to_string(),
-                '_' => format!("__"), // escape `'_'` to prevent name clashes
+                '_' => "__".to_string(), // escape `'_'` to prevent name clashes
                 other => format!("_{:x}", other as u32),
             })
             .collect()

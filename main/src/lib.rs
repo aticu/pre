@@ -1,3 +1,4 @@
+#![allow(clippy::needless_doctest_main)]
 #![cfg_attr(feature = "const-generics-impl", feature(const_generics))]
 #![cfg_attr(feature = "const-generics-impl", allow(incomplete_features))]
 
