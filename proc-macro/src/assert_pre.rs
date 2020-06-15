@@ -310,7 +310,7 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, call: &ExprC
         }
     }
 
-    let output = render_assert_pre(attr.preconditions, call, original_attr.span());
+    let output = render_assert_pre(attr.preconditions, call.into(), original_attr.span());
 
-    Expr::Call(output)
+    output.into()
 }

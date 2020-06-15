@@ -13,9 +13,12 @@ use proc_macro_crate::crate_name;
 use proc_macro_error::abort_call_site;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use std::env;
-use syn::{parse2, parse_quote, spanned::Spanned, ExprCall, Ident, ItemFn, LitStr};
+use syn::{parse2, parse_quote, spanned::Spanned, Ident, ItemFn, LitStr};
 
-use crate::precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList};
+use crate::{
+    call::Call,
+    precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList},
+};
 
 /// Returns the name of the main crate.
 fn get_crate_name() -> Ident {
@@ -86,10 +89,10 @@ pub(crate) fn render_pre(
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_pre(
     preconditions: PreconditionList<Precondition>,
-    mut call: ExprCall,
+    mut call: Call,
     attr_span: Span,
-) -> ExprCall {
-    call.args.push(
+) -> Call {
+    call.args_mut().push(
         parse2(quote_spanned! { attr_span=>
             ::core::marker::PhantomData::<(#preconditions)>
         })

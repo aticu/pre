@@ -19,9 +19,12 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse2, parse_quote, Expr, ExprCall, Ident, ItemFn};
+use syn::{parse2, parse_quote, Ident, ItemFn};
 
-use crate::precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList};
+use crate::{
+    call::Call,
+    precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList},
+};
 
 /// Renders a precondition as a `String` representing an identifier.
 pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
@@ -99,19 +102,31 @@ pub(crate) fn render_pre(
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_pre(
     preconditions: PreconditionList<Precondition>,
-    mut call: ExprCall,
+    mut call: Call,
     attr_span: Span,
-) -> ExprCall {
+) -> Call {
+    if !call.is_function() {
+        emit_error!(
+            call,
+            "method calls are not supported by `pre` on the stable compiler"
+        );
+
+        return call;
+    }
+
     let path;
 
-    if let Expr::Path(p) = *call.func.clone() {
+    if let Some(p) = call.path() {
         path = p;
     } else {
-        emit_error!(
-            call.func,
-            "unable to determine at compile time which function is being called";
-            help = "use a direct path to the function instead"
-        );
+        match &call {
+            Call::Function(call) => emit_error!(
+                call,
+                "unable to determine at compile time which function is being called";
+                help = "use a direct path to the function instead"
+            ),
+            _ => unreachable!("we already checked that it's a function"),
+        }
 
         return call;
     }
@@ -127,7 +142,7 @@ pub(crate) fn render_assert_pre(
         };
     }
 
-    call.args.push(
+    call.args_mut().push(
         parse2(quote_spanned! { attr_span=>
             #path {
                 #preconditions_rendered
