@@ -215,36 +215,46 @@ const ASSERT_CONDITION_HOLDS_ATTR: &str = "assert_pre";
 pub(crate) struct AssertPreVisitor;
 
 impl VisitMut for AssertPreVisitor {
-    fn visit_expr_call_mut(&mut self, call: &mut ExprCall) {
-        let mut i = 0;
-        let mut attr_found = false;
-        while i < call.attrs.len() {
-            if call.attrs[i].path.is_ident(ASSERT_CONDITION_HOLDS_ATTR) {
-                let attr = call.attrs.remove(i);
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        match expr {
+            Expr::Call(call) => {
+                let mut i = 0;
+                let mut attrs = Vec::new();
 
-                if attr_found {
-                    emit_error!(
-                        attr,
-                        "duplicate {} attribute found",
-                        ASSERT_CONDITION_HOLDS_ATTR;
-                        hint = "combine the list of conditions into one attribute"
-                    );
-                    continue;
-                } else {
-                    attr_found = true;
+                // TODO: Change this to drain_filter once it is stabilized
+                // (see https://github.com/rust-lang/rust/issues/43244)
+                while i < call.attrs.len() {
+                    if call.attrs[i].path.is_ident(ASSERT_CONDITION_HOLDS_ATTR) {
+                        attrs.push(call.attrs.remove(i));
+                    } else {
+                        i += 1;
+                    }
                 }
 
-                if let Ok(parsed_attr) =
-                    syn::parse2(attr.tokens.clone()).map_err(|err| emit_error!(err))
-                {
-                    process_attribute(parsed_attr, attr, call);
+                if !attrs.is_empty() {
+                    let attr = attrs.remove(0);
+
+                    if let Ok(parsed_attr) =
+                        syn::parse2(attr.tokens.clone()).map_err(|err| emit_error!(err))
+                    {
+                        let mut new_expr = process_attribute(parsed_attr, attr, call);
+                        mem::swap(&mut new_expr, expr);
+                    }
+
+                    if !attrs.is_empty() {
+                        emit_error!(
+                            attrs[0],
+                            "duplicate {} attribute found",
+                            ASSERT_CONDITION_HOLDS_ATTR;
+                            hint = "combine the list of conditions into one attribute"
+                        );
+                    }
                 }
-            } else {
-                i += 1;
             }
+            _ => (),
         }
 
-        syn::visit_mut::visit_expr_call_mut(self, call);
+        syn::visit_mut::visit_expr_mut(self, expr);
     }
 }
 
@@ -264,7 +274,7 @@ fn unfinished_reason(precondition: &Precondition) -> Option<&LitStr> {
 }
 
 /// Process a found `assert_pre` attribute.
-fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, call: &mut ExprCall) {
+fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, call: &ExprCall) -> Expr {
     for precondition in attr.preconditions.iter() {
         if precondition.reason().is_none() {
             let missing_reason_span = precondition
@@ -284,6 +294,8 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, call: &mut E
         }
     }
 
+    let mut call = call.clone();
+
     if let Some(def_statement) = attr.def_statement {
         if let Expr::Path(p) = *call.func.clone() {
             let mut new_path = Expr::Path(def_statement.construct_new_path(&p));
@@ -298,12 +310,7 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, call: &mut E
         }
     }
 
-    let attr_span = original_attr
-        .pound_token
-        .span
-        .join(original_attr.bracket_token.span)
-        .unwrap_or_else(|| original_attr.bracket_token.span);
-    let mut output = render_assert_pre(attr.preconditions, call.clone(), attr_span);
+    let output = render_assert_pre(attr.preconditions, call, original_attr.span());
 
-    mem::swap(&mut output, call);
+    Expr::Call(output)
 }
