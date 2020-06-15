@@ -2,8 +2,9 @@
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
+use std::convert::TryFrom;
 use syn::{
-    parse_quote, punctuated::Punctuated, token::Comma, Expr, ExprCall, ExprMethodCall, ExprPath,
+    punctuated::Punctuated, token::Comma, Attribute, Expr, ExprCall, ExprMethodCall, ExprPath,
 };
 
 /// A call expression.
@@ -15,6 +16,14 @@ pub(crate) enum Call {
 }
 
 impl Call {
+    /// Grants mutable access to the attributes of the call.
+    pub(crate) fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
+        match self {
+            Call::Function(call) => &mut call.attrs,
+            Call::Method(call) => &mut call.attrs,
+        }
+    }
+
     /// Access a mutable reference arguments of the call.
     pub(crate) fn args_mut(&mut self) -> &mut Punctuated<Expr, Comma> {
         match self {
@@ -24,8 +33,6 @@ impl Call {
     }
 
     /// The name of the function or method.
-    ///
-    /// For a method, the path is created from the single identifier that is the method name.
     #[allow(dead_code)]
     pub(crate) fn path(&self) -> Option<ExprPath> {
         match self {
@@ -33,12 +40,7 @@ impl Call {
                 Expr::Path(path) => Some(path.clone()),
                 _ => None,
             },
-            Call::Method(call) => {
-                let method = &call.method;
-                Some(parse_quote! {
-                    #method
-                })
-            }
+            Call::Method(_) => None,
         }
     }
 
@@ -61,6 +63,18 @@ impl From<ExprCall> for Call {
 impl From<ExprMethodCall> for Call {
     fn from(call: ExprMethodCall) -> Self {
         Call::Method(call)
+    }
+}
+
+impl TryFrom<Expr> for Call {
+    type Error = ();
+
+    fn try_from(value: Expr) -> Result<Self, Self::Error> {
+        match value {
+            Expr::Call(call) => Ok(call.into()),
+            Expr::MethodCall(call) => Ok(call.into()),
+            _ => Err(()),
+        }
     }
 }
 

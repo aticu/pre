@@ -19,7 +19,7 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse2, parse_quote, Ident, ItemFn};
+use syn::{parse2, parse_quote, spanned::Spanned, Ident, ItemFn};
 
 use crate::{
     call::Call,
@@ -67,6 +67,18 @@ pub(crate) fn render_pre(
     preconditions: PreconditionList<Precondition>,
     mut function: ItemFn,
 ) -> TokenStream {
+    if function.sig.receiver().is_some() {
+        let span = preconditions
+            .iter()
+            .next()
+            .map(|precondition| precondition.span())
+            .unwrap_or_else(|| function.span());
+        emit_error!(
+            span,
+            "preconditions are not supported for methods on the stable compiler"
+        );
+    }
+
     let function_name = function.sig.ident.clone();
     let mut preconditions_rendered = quote! {};
 
