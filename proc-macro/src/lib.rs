@@ -15,6 +15,7 @@ use crate::{
 };
 
 mod assert_pre;
+mod call;
 mod def;
 mod precondition;
 
