@@ -43,6 +43,7 @@ impl<T> PreconditionList<T> {
     /// Provides an iterator over the preconditions.
     ///
     /// The order of the preconditions is the order in which they were specified
+    #[allow(dead_code)]
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.preconditions.iter()
     }

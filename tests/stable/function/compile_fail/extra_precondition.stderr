@@ -1,7 +1,7 @@
 error[E0560]: struct `foo` has no field named `_custom_must_20be_20baz`
-  --> $DIR/extra_precondition.rs:10:18
-   |
-10 |         condition("must be baz", reason = "is baz")
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` does not have this field
-   |
-   = note: available fields are: `_custom_must_20be_20bar`
+ --> $DIR/extra_precondition.rs:9:27
+  |
+9 |     #[assert_pre(condition("must be baz", reason = "is baz"))]
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` does not have this field
+  |
+  = note: available fields are: `_custom_must_20be_20bar`

@@ -113,7 +113,7 @@ pub(crate) fn render_pre(
 
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_pre(
-    preconditions: PreconditionList<Precondition>,
+    preconditions: Vec<Precondition>,
     mut call: Call,
     attr_span: Span,
 ) -> Call {
