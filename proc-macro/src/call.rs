@@ -8,6 +8,7 @@ use syn::{
 };
 
 /// A call expression.
+#[derive(Clone)]
 pub(crate) enum Call {
     /// The call expression is a function call.
     Function(ExprCall),
