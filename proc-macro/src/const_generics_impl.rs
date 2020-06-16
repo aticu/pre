@@ -72,6 +72,21 @@ impl ToTokens for Precondition {
     }
 }
 
+/// Renders a precondition list to a token stream.
+fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> TokenStream {
+    preconditions.sort_unstable();
+
+    let mut tokens = TokenStream::new();
+
+    for precondition in preconditions {
+        tokens.append_all(quote_spanned! { span=>
+            #precondition,
+        });
+    }
+
+    tokens
+}
+
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
     preconditions: PreconditionList<Precondition>,
@@ -88,10 +103,12 @@ pub(crate) fn render_pre(
 
 /// Generates the code for the call with the precondition handling added.
 pub(crate) fn render_assert_pre(
-    preconditions: PreconditionList<Precondition>,
+    preconditions: Vec<Precondition>,
     mut call: Call,
     attr_span: Span,
 ) -> Call {
+    let preconditions = render_condition_list(preconditions, attr_span);
+
     call.args_mut().push(
         parse2(quote_spanned! { attr_span=>
             ::core::marker::PhantomData::<(#preconditions)>

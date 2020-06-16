@@ -5,9 +5,7 @@ fn foo() {}
 
 #[check_pre]
 fn main() {
-    #[assert_pre(
-        condition("must be bar", reason = "is bar"),
-        condition("must also be baz", reason = "is also baz")
-    )]
+    #[assert_pre(condition("must be bar", reason = "is bar"))]
+    #[assert_pre(condition("must also be baz", reason = "is also baz"))]
     foo()
 }

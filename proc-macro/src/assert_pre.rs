@@ -1,5 +1,6 @@
 //! Functionality for parsing and visiting `assert_pre` attributes.
 
+use proc_macro2::Span;
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned};
 use std::{convert::TryInto, mem};
@@ -11,14 +12,10 @@ use syn::{
     spanned::Spanned,
     token::Paren,
     visit_mut::VisitMut,
-    Attribute, Expr, ExprPath, LitStr, Path, Token,
+    Expr, ExprPath, LitStr, Path, Token,
 };
 
-use crate::{
-    call::Call,
-    precondition::{Precondition, PreconditionList},
-    render_assert_pre,
-};
+use crate::{call::Call, precondition::Precondition, render_assert_pre};
 
 /// The custom keywords used in the `assert_pre` attribute.
 mod custom_keywords {
@@ -28,13 +25,19 @@ mod custom_keywords {
 }
 
 /// An `assert_pre` declaration.
-pub(crate) struct AssertPreAttr {
-    /// The parentheses surrounding the attribute.
-    _parentheses: Paren,
-    /// Information where to find the definition of the preconditions.
-    def_statement: Option<DefStatement>,
-    /// The precondition list in the declaration.
-    preconditions: PreconditionList<Precondition>,
+enum AssertPreAttr {
+    DefStatement {
+        /// The parentheses surrounding the attribute.
+        _parentheses: Paren,
+        /// Information where to find the definition of the preconditions.
+        def_statement: DefStatement,
+    },
+    Precondition {
+        /// The parentheses surrounding the attribute.
+        _parentheses: Paren,
+        /// The precondition list in the declaration.
+        precondition: Precondition,
+    },
 }
 
 impl Parse for AssertPreAttr {
@@ -42,32 +45,28 @@ impl Parse for AssertPreAttr {
         let content;
         let parentheses = parenthesized!(content in input);
 
-        let def_statement = if content.peek(custom_keywords::def) {
-            Some(content.parse()?)
+        if content.peek(custom_keywords::def) {
+            Ok(AssertPreAttr::DefStatement {
+                _parentheses: parentheses,
+                def_statement: content.parse()?,
+            })
         } else {
-            None
-        };
-
-        let preconditions = content.parse()?;
-
-        Ok(AssertPreAttr {
-            _parentheses: parentheses,
-            def_statement,
-            preconditions,
-        })
+            Ok(AssertPreAttr::Precondition {
+                _parentheses: parentheses,
+                precondition: content.parse()?,
+            })
+        }
     }
 }
 
 /// Provides information where to find the definition of the preconditions.
 struct DefStatement {
     /// The def keyword.
-    _def_keyword: custom_keywords::def,
+    def_keyword: custom_keywords::def,
     /// The parentheses surrounding the definition site.
-    _parentheses: Paren,
+    parentheses: Paren,
     /// Information about the definition site.
     site: DefStatementSite,
-    /// The comma following the `def(...)` statement.
-    _comma: Token![,],
 }
 
 impl Parse for DefStatement {
@@ -76,14 +75,21 @@ impl Parse for DefStatement {
         let content;
         let parentheses = parenthesized!(content in input);
         let site = content.parse()?;
-        let comma = input.parse()?;
 
         Ok(DefStatement {
-            _def_keyword: def_keyword,
-            _parentheses: parentheses,
+            def_keyword,
+            parentheses,
             site,
-            _comma: comma,
         })
+    }
+}
+
+impl Spanned for DefStatement {
+    fn span(&self) -> Span {
+        self.def_keyword
+            .span()
+            .join(self.parentheses.span)
+            .unwrap_or_else(|| self.parentheses.span)
     }
 }
 
@@ -236,24 +242,47 @@ impl VisitMut for AssertPreVisitor {
                 }
             }
 
-            if !attrs.is_empty() {
-                let attr = attrs.remove(0);
+            let mut def_statement = None;
+            let mut preconditions = Vec::new();
+            // Use the span of any of the attributes, so that the error when the function
+            // definition doesn't have any preconditions points to a precondition and not to the
+            // outer function attribute
+            let mut attr_span = None;
 
-                if let Ok(parsed_attr) =
-                    syn::parse2(attr.tokens.clone()).map_err(|err| emit_error!(err))
-                {
-                    let mut new_expr = process_attribute(parsed_attr, attr, call);
-                    mem::swap(&mut new_expr, expr);
+            for attr in attrs {
+                attr_span = Some(attr.span());
+                match syn::parse2(attr.tokens) {
+                    Ok(parsed_attr) => match parsed_attr {
+                        AssertPreAttr::DefStatement {
+                            def_statement: def, ..
+                        } => {
+                            if let Some(old_def_statement) = def_statement.replace(def) {
+                                let span = def_statement
+                                    .as_ref()
+                                    .expect(
+                                        "options contains a value, because it was just put there",
+                                    )
+                                    .span();
+                                emit_error!(
+                                    span,
+                                    "duplicate `def(...)` statement";
+                                    help = old_def_statement.span() => "there can be just one definition site, try removing the wrong one"
+                                );
+                            }
+                        }
+                        AssertPreAttr::Precondition { precondition, .. } => {
+                            preconditions.push(precondition);
+                        }
+                    },
+                    Err(err) => emit_error!(err),
                 }
+            }
 
-                if !attrs.is_empty() {
-                    emit_error!(
-                        attrs[0],
-                        "duplicate {} attribute found",
-                        ASSERT_CONDITION_HOLDS_ATTR;
-                        hint = "combine the list of conditions into one attribute"
-                    );
-                }
+            preconditions.sort_unstable();
+
+            if let Some(attr_span) = attr_span {
+                let mut new_expr = process_attribute(preconditions, def_statement, attr_span, call);
+                mem::swap(&mut new_expr, expr);
             }
         }
 
@@ -277,8 +306,13 @@ fn unfinished_reason(precondition: &Precondition) -> Option<&LitStr> {
 }
 
 /// Process a found `assert_pre` attribute.
-fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, mut call: Call) -> Expr {
-    for precondition in attr.preconditions.iter() {
+fn process_attribute(
+    preconditions: Vec<Precondition>,
+    def_statement: Option<DefStatement>,
+    attr_span: Span,
+    mut call: Call,
+) -> Expr {
+    for precondition in preconditions.iter() {
         if precondition.reason().is_none() {
             let missing_reason_span = precondition
                 .missing_reason_span()
@@ -299,7 +333,7 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, mut call: Ca
 
     let mut original_call = None;
 
-    if let Some(def_statement) = attr.def_statement {
+    if let Some(def_statement) = def_statement {
         original_call = Some(call.clone());
 
         match &mut call {
@@ -320,17 +354,17 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, mut call: Ca
         }
     }
 
-    let output = render_assert_pre(attr.preconditions, call, original_attr.span());
+    let output = render_assert_pre(preconditions, call, attr_span);
 
     if let Some(original_call) = original_call {
         parse2(quote_spanned! {
             original_call.span()=>
-            #[allow(dead_code)]
-            if true {
-                #output
-            } else {
-                #original_call
-            }
+                #[allow(dead_code)]
+                if true {
+                    #output
+                } else {
+                    #original_call
+                }
         })
         .expect("if expression is a valid expression")
     } else {
