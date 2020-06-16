@@ -1,11 +1,12 @@
 //! Functionality for parsing and visiting `assert_pre` attributes.
 
 use proc_macro_error::{emit_error, emit_warning};
-use quote::quote;
+use quote::{quote, quote_spanned};
 use std::{convert::TryInto, mem};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
+    parse2,
     punctuated::Pair,
     spanned::Spanned,
     token::Paren,
@@ -105,7 +106,7 @@ impl DefStatement {
                         fn_path,
                         "cannot replace `{}` in this path",
                         quote! { #from };
-                        help = from.span()=> "try specifing a prefix of `{}` in the `def(...)`",
+                        help = from.span()=> "try specifing a prefix of `{}` in `def(...)`",
                         quote! { #fn_path }
                     );
                     return resulting_path;
@@ -124,7 +125,7 @@ impl DefStatement {
                             note = fn_segment.span()=> "`{}` != `{}`",
                             quote! { #from_segment },
                             quote! { #fn_segment };
-                            help = from.span()=> "try specifing a prefix of `{}` in the `def(...)`",
+                            help = from.span()=> "try specifing a prefix of `{}` in `def(...)`",
                             quote! { #fn_path }
                         );
                         return resulting_path.clone();
@@ -296,7 +297,11 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, mut call: Ca
         }
     }
 
+    let mut original_call = None;
+
     if let Some(def_statement) = attr.def_statement {
+        original_call = Some(call.clone());
+
         match &mut call {
             Call::Function(ref mut call) => {
                 if let Expr::Path(p) = *call.func.clone() {
@@ -317,5 +322,18 @@ fn process_attribute(attr: AssertPreAttr, original_attr: Attribute, mut call: Ca
 
     let output = render_assert_pre(attr.preconditions, call, original_attr.span());
 
-    output.into()
+    if let Some(original_call) = original_call {
+        parse2(quote_spanned! {
+            original_call.span()=>
+            #[allow(dead_code)]
+            if true {
+                #output
+            } else {
+                #original_call
+            }
+        })
+        .expect("if expression is a valid expression")
+    } else {
+        output.into()
+    }
 }
