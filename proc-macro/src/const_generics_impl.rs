@@ -13,11 +13,11 @@ use proc_macro_crate::crate_name;
 use proc_macro_error::abort_call_site;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use std::env;
-use syn::{parse2, parse_quote, spanned::Spanned, Ident, ItemFn, LitStr};
+use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
 
 use crate::{
     call::Call,
-    precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList},
+    precondition::{kind::ReadWrite, Precondition, PreconditionKind},
 };
 
 /// Returns the name of the main crate.
@@ -34,16 +34,6 @@ fn get_crate_name() -> Ident {
         },
     };
     Ident::new(&name, Span::call_site())
-}
-
-impl<T: ToTokens + Ord> ToTokens for PreconditionList<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        for precondition in self.sorted_iter() {
-            tokens.append_all(quote! {
-                #precondition,
-            });
-        }
-    }
 }
 
 impl ToTokens for Precondition {
@@ -89,12 +79,18 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
 
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
-    preconditions: PreconditionList<Precondition>,
+    preconditions: Vec<Precondition>,
     mut function: ItemFn,
+    span: Span,
 ) -> TokenStream {
-    function.sig.inputs.push(parse_quote! {
-        _: ::core::marker::PhantomData<(#preconditions)>
-    });
+    let preconditions = render_condition_list(preconditions, span);
+
+    function.sig.inputs.push(
+        parse2(quote_spanned! { span=>
+            _: ::core::marker::PhantomData<(#preconditions)>
+        })
+        .expect("parses as a function argument"),
+    );
 
     quote! {
         #function
@@ -105,12 +101,12 @@ pub(crate) fn render_pre(
 pub(crate) fn render_assert_pre(
     preconditions: Vec<Precondition>,
     mut call: Call,
-    attr_span: Span,
+    span: Span,
 ) -> Call {
-    let preconditions = render_condition_list(preconditions, attr_span);
+    let preconditions = render_condition_list(preconditions, span);
 
     call.args_mut().push(
-        parse2(quote_spanned! { attr_span=>
+        parse2(quote_spanned! { span=>
             ::core::marker::PhantomData::<(#preconditions)>
         })
         .expect("parses as an expression"),

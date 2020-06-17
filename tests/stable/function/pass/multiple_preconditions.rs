@@ -1,6 +1,7 @@
 use pre::{check_pre, pre};
 
-#[pre(condition("must be bar"), condition("must also be baz"))]
+#[pre(condition("must be bar"))]
+#[pre(condition("must also be baz"))]
 fn foo() {}
 
 #[check_pre]

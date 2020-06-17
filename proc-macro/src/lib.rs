@@ -4,14 +4,22 @@
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use proc_macro_error::{emit_warning, proc_macro_error};
+use proc_macro_error::{emit_error, emit_warning, proc_macro_error};
 use quote::quote;
-use syn::{parse_macro_input, visit_mut::VisitMut, Item, ItemFn};
+use syn::{
+    parenthesized,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    spanned::Spanned,
+    token::Paren,
+    visit_mut::VisitMut,
+    Item, ItemFn,
+};
 
 use crate::{
     assert_pre::AssertPreVisitor,
     def::{DefPreAttr, DefPreModule},
-    precondition::{Precondition, PreconditionList},
+    precondition::Precondition,
 };
 
 mod assert_pre;
@@ -29,6 +37,27 @@ cfg_if::cfg_if! {
     }
 }
 
+/// A `pre` attribute.
+struct PreAttr {
+    /// The parentheses surrounding the condition.
+    _parentheses: Paren,
+    /// The condition within the attribute.
+    precondition: Precondition,
+}
+
+impl Parse for PreAttr {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        let parentheses = parenthesized!(content in input);
+        let precondition = content.parse()?;
+
+        Ok(PreAttr {
+            _parentheses: parentheses,
+            precondition,
+        })
+    }
+}
+
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
@@ -37,15 +66,39 @@ pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
         #dummy_function
     });
 
-    let preconditions = parse_macro_input!(attr as PreconditionList<Precondition>);
-    let function = parse_macro_input!(function as ItemFn);
+    let mut function = parse_macro_input!(function as ItemFn);
 
-    let output = render_pre(preconditions, function);
+    let mut i = 0;
+    let mut attrs = Vec::new();
+
+    // TODO: Change this to drain_filter once it is stabilized
+    // (see https://github.com/rust-lang/rust/issues/43244)
+    while i < function.attrs.len() {
+        if function.attrs[i].path.is_ident("pre") {
+            attrs.push(function.attrs.remove(i));
+        } else {
+            i += 1;
+        }
+    }
+
+    let mut preconditions = vec![parse_macro_input!(attr as Precondition)];
+    let mut attr_span = preconditions[0].span();
+
+    for attr in attrs {
+        attr_span = attr_span.join(attr.span()).unwrap_or_else(|| attr.span());
+
+        match syn::parse2::<PreAttr>(attr.tokens) {
+            Ok(parsed_attr) => preconditions.push(parsed_attr.precondition),
+            Err(err) => emit_error!(err),
+        }
+    }
+
+    let output = render_pre(preconditions, function, attr_span);
 
     // Reset the dummy here, in case errors were emitted in `render_pre`.
     // This will use the most up-to-date version of the generated code.
     proc_macro_error::set_dummy(quote! {
-        #dummy_function
+        #output
     });
 
     output.into()
