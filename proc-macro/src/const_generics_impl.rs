@@ -11,13 +11,13 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_crate::crate_name;
 use proc_macro_error::abort_call_site;
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{quote, quote_spanned, TokenStreamExt};
 use std::env;
 use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
 
 use crate::{
     call::Call,
-    precondition::{kind::ReadWrite, Precondition, PreconditionKind},
+    precondition::{Precondition, ReadWrite},
 };
 
 /// Returns the name of the main crate.
@@ -36,16 +36,21 @@ fn get_crate_name() -> Ident {
     Ident::new(&name, Span::call_site())
 }
 
-impl ToTokens for Precondition {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let pre = get_crate_name();
-        match self.kind() {
-            PreconditionKind::Custom(string) => {
-                tokens.append_all(quote_spanned! { self.span()=>
-                    ::#pre::CustomConditionHolds::<#string>
+/// Renders a precondition list to a token stream.
+fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> TokenStream {
+    preconditions.sort_unstable();
+
+    let mut tokens = TokenStream::new();
+    let crate_name = get_crate_name();
+
+    for precondition in preconditions {
+        match &precondition {
+            Precondition::Custom(string) => {
+                tokens.append_all(quote_spanned! { precondition.span()=>
+                    ::#crate_name::CustomConditionHolds::<#string>
                 });
             }
-            PreconditionKind::ValidPtr {
+            Precondition::ValidPtr {
                 ident, read_write, ..
             } => {
                 let ident_lit = LitStr::new(&ident.to_string(), ident.span());
@@ -54,23 +59,14 @@ impl ToTokens for Precondition {
                     ReadWrite::Write { .. } => LitStr::new("w", read_write.span()),
                     ReadWrite::Both { .. } => LitStr::new("r+w", read_write.span()),
                 };
-                tokens.append_all(quote_spanned! { self.span()=>
-                    ::#pre::ValidPtrConditionHolds::<#ident_lit, #rw_str>
+                tokens.append_all(quote_spanned! { precondition.span()=>
+                    ::#crate_name::ValidPtrConditionHolds::<#ident_lit, #rw_str>
                 });
             }
         }
-    }
-}
 
-/// Renders a precondition list to a token stream.
-fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> TokenStream {
-    preconditions.sort_unstable();
-
-    let mut tokens = TokenStream::new();
-
-    for precondition in preconditions {
         tokens.append_all(quote_spanned! { span=>
-            #precondition,
+            ,
         });
     }
 

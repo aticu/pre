@@ -7,7 +7,7 @@ The main feature of `pre` is that probably incorrect code will not compile.
 ```rust
 use pre::{pre, check_pre};
 
-#[pre(condition(valid_ptr(ptr, r)))]
+#[pre(valid_ptr(ptr, r))]
 unsafe fn read_twice<T: Copy>(ptr: *const T) -> (T, T) {
     (std::ptr::read(ptr), std::ptr::read(ptr))
 }
@@ -17,7 +17,7 @@ fn main() {
     let ptr: *const i32 = &42;
 
     let (a, b) = unsafe {
-        #[assert_pre(condition(valid_ptr(ptr, r), reason = "the pointer is created from a reference"))]
+        #[assert_pre(valid_ptr(ptr, r), reason = "the pointer is created from a reference")]
         read_twice(ptr)
     };
 

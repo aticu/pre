@@ -1,6 +1,6 @@
 use pre::pre;
 
-#[pre(condition("must be bar"))]
+#[pre("must be bar")]
 fn foo() {}
 
 fn main() {

@@ -4,7 +4,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 3 | fn foo() {}
   | -------- defined here
 ...
-7 |     #[assert_pre(condition("must be bar", reason = "is bar"))]
-  |     ---------------------------------------------------------- supplied 1 argument
+7 |     #[assert_pre("must be bar", reason = "is bar")]
+  |     ----------------------------------------------- supplied 1 argument
 8 |     foo()
   |     ^^^ expected 0 arguments

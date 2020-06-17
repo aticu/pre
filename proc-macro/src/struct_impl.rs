@@ -23,7 +23,7 @@ use syn::{parse2, spanned::Spanned, Ident, ItemFn};
 
 use crate::{
     call::Call,
-    precondition::{kind::ReadWrite, Precondition, PreconditionKind},
+    precondition::{Precondition, ReadWrite},
 };
 
 /// Renders a precondition as a `String` representing an identifier.
@@ -40,8 +40,8 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
             .collect()
     }
 
-    let mut ident = match precondition.kind() {
-        PreconditionKind::ValidPtr {
+    let mut ident = match precondition {
+        Precondition::ValidPtr {
             ident, read_write, ..
         } => format_ident!(
             "_valid_ptr_{}_{}",
@@ -52,7 +52,7 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
                 ReadWrite::Both { .. } => "rw",
             }
         ),
-        PreconditionKind::Custom(string) => {
+        Precondition::Custom(string) => {
             format_ident!("_custom_{}", escape_non_ident_chars(string.value()))
         }
     };
