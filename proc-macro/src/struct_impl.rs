@@ -19,11 +19,11 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse2, parse_quote, spanned::Spanned, Ident, ItemFn};
+use syn::{parse2, spanned::Spanned, Ident, ItemFn};
 
 use crate::{
     call::Call,
-    precondition::{kind::ReadWrite, Precondition, PreconditionKind, PreconditionList},
+    precondition::{kind::ReadWrite, Precondition, PreconditionKind},
 };
 
 /// Renders a precondition as a `String` representing an identifier.
@@ -64,8 +64,9 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
 
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
-    preconditions: PreconditionList<Precondition>,
+    preconditions: Vec<Precondition>,
     mut function: ItemFn,
+    span: Span,
 ) -> TokenStream {
     if function.sig.receiver().is_some() {
         let span = preconditions
@@ -87,13 +88,13 @@ pub(crate) fn render_pre(
     for precondition in preconditions.iter() {
         let precondition_rendered = render_as_ident(&precondition);
 
-        preconditions_rendered = quote! {
+        preconditions_rendered = quote_spanned! { span=>
             #preconditions_rendered
             #vis #precondition_rendered: (),
         };
     }
 
-    let struct_def = quote! {
+    let struct_def = quote_spanned! { span=>
         #[allow(non_camel_case_types)]
         #[allow(non_snake_case)]
         #vis struct #function_name {
@@ -101,9 +102,12 @@ pub(crate) fn render_pre(
         }
     };
 
-    function.sig.inputs.push(parse_quote! {
-        _: #function_name
-    });
+    function.sig.inputs.push(
+        parse2(quote_spanned! { span=>
+            _: #function_name
+        })
+        .expect("parses as valid function argument"),
+    );
 
     quote! {
         #struct_def
@@ -115,7 +119,7 @@ pub(crate) fn render_pre(
 pub(crate) fn render_assert_pre(
     preconditions: Vec<Precondition>,
     mut call: Call,
-    attr_span: Span,
+    span: Span,
 ) -> Call {
     if !call.is_function() {
         emit_error!(
@@ -155,7 +159,7 @@ pub(crate) fn render_assert_pre(
     }
 
     call.args_mut().push(
-        parse2(quote_spanned! { attr_span=>
+        parse2(quote_spanned! { span=>
             #path {
                 #preconditions_rendered
             }

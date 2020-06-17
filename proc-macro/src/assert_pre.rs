@@ -247,10 +247,14 @@ impl VisitMut for AssertPreVisitor {
             // Use the span of any of the attributes, so that the error when the function
             // definition doesn't have any preconditions points to a precondition and not to the
             // outer function attribute
-            let mut attr_span = None;
+            let mut attr_span: Option<Span> = None;
 
             for attr in attrs {
-                attr_span = Some(attr.span());
+                attr_span = Some(match attr_span.take() {
+                    Some(old_span) => old_span.join(attr.span()).unwrap_or_else(|| attr.span()),
+                    None => attr.span(),
+                });
+
                 match syn::parse2(attr.tokens) {
                     Ok(parsed_attr) => match parsed_attr {
                         AssertPreAttr::DefStatement {

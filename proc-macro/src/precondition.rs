@@ -10,10 +10,9 @@ use syn::{
     LitStr, Token,
 };
 
-pub(crate) use self::{kind::PreconditionKind, list::PreconditionList};
+pub(crate) use self::kind::PreconditionKind;
 
 pub(crate) mod kind;
-mod list;
 
 /// The custom keywords used in preconditions.
 mod custom_keywords {
