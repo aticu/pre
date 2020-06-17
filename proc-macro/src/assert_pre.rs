@@ -22,6 +22,7 @@ mod custom_keywords {
     use syn::custom_keyword;
 
     custom_keyword!(def);
+    custom_keyword!(reason);
 }
 
 /// An `assert_pre` declaration.
@@ -35,8 +36,8 @@ enum AssertPreAttr {
     Precondition {
         /// The parentheses surrounding the attribute.
         _parentheses: Paren,
-        /// The precondition list in the declaration.
-        precondition: Precondition,
+        /// The statement that the precondition holds.
+        precondition: PreconditionHoldsStatement,
     },
 }
 
@@ -46,16 +47,96 @@ impl Parse for AssertPreAttr {
         let parentheses = parenthesized!(content in input);
 
         if content.peek(custom_keywords::def) {
+            let def_statement = content.parse()?;
+
             Ok(AssertPreAttr::DefStatement {
                 _parentheses: parentheses,
-                def_statement: content.parse()?,
+                def_statement,
             })
         } else {
+            let precondition = content.parse()?;
+
             Ok(AssertPreAttr::Precondition {
                 _parentheses: parentheses,
-                precondition: content.parse()?,
+                precondition,
             })
         }
+    }
+}
+
+/// A statement that a precondition holds.
+enum PreconditionHoldsStatement {
+    /// The statement had a reason attached to it.
+    WithReason {
+        /// The precondition that was stated.
+        precondition: Precondition,
+        /// The comma separating the precondition from the reason.
+        _comma: Token![,],
+        /// The reason that was stated.
+        reason: Reason,
+    },
+    /// The statement written without a reason.
+    WithoutReason {
+        /// The precondition that was stated.
+        precondition: Precondition,
+        /// The span where to place the missing reason.
+        missing_reason_span: Span,
+    },
+}
+
+impl PreconditionHoldsStatement {
+    /// Returns only the precondition from this statement.
+    fn into_precondition(self) -> Precondition {
+        match self {
+            PreconditionHoldsStatement::WithoutReason { precondition, .. } => precondition,
+            PreconditionHoldsStatement::WithReason { precondition, .. } => precondition,
+        }
+    }
+}
+
+impl Parse for PreconditionHoldsStatement {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let precondition = input.parse()?;
+
+        if input.is_empty() {
+            Ok(PreconditionHoldsStatement::WithoutReason {
+                precondition,
+                missing_reason_span: input.span(),
+            })
+        } else {
+            let comma = input.parse()?;
+            let reason = input.parse()?;
+
+            Ok(PreconditionHoldsStatement::WithReason {
+                precondition,
+                _comma: comma,
+                reason,
+            })
+        }
+    }
+}
+
+/// The reason why a precondition holds.
+struct Reason {
+    /// The `reason` keyword.
+    _reason_keyword: custom_keywords::reason,
+    /// The `=` separating the `reason` keyword and the reason.
+    _eq: Token![=],
+    /// The reason the precondition holds.
+    reason: LitStr,
+}
+
+impl Parse for Reason {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let reason_keyword = input.parse()?;
+        let eq = input.parse()?;
+        let reason = input.parse()?;
+
+        Ok(Reason {
+            _reason_keyword: reason_keyword,
+            _eq: eq,
+            reason,
+        })
     }
 }
 
@@ -282,8 +363,6 @@ impl VisitMut for AssertPreVisitor {
                 }
             }
 
-            preconditions.sort_unstable();
-
             if let Some(attr_span) = attr_span {
                 let mut new_expr = process_attribute(preconditions, def_statement, attr_span, call);
                 mem::swap(&mut new_expr, expr);
@@ -295,45 +374,50 @@ impl VisitMut for AssertPreVisitor {
 }
 
 /// Returns an unfinished reason declaration for the precondition if one exists.
-fn unfinished_reason(precondition: &Precondition) -> Option<&LitStr> {
-    let reason = precondition.reason().map(|r| r.value());
+fn unfinished_reason(reason: &LitStr) -> Option<&LitStr> {
+    let mut reason_val = reason.value();
 
-    if let Some(mut reason) = reason {
-        reason.make_ascii_lowercase();
-        match &*reason {
-            HINT_REASON | "todo" | "?" => precondition.reason(),
-            _ => None,
-        }
-    } else {
-        None
+    reason_val.make_ascii_lowercase();
+    match &*reason_val {
+        HINT_REASON | "todo" | "?" => Some(reason),
+        _ => None,
     }
 }
 
 /// Process a found `assert_pre` attribute.
 fn process_attribute(
-    preconditions: Vec<Precondition>,
+    preconditions: Vec<PreconditionHoldsStatement>,
     def_statement: Option<DefStatement>,
     attr_span: Span,
     mut call: Call,
 ) -> Expr {
     for precondition in preconditions.iter() {
-        if precondition.reason().is_none() {
-            let missing_reason_span = precondition
-                .missing_reason_span()
-                .expect("the reason is missing");
-            emit_error!(
+        match precondition {
+            PreconditionHoldsStatement::WithReason { reason, .. } => {
+                if let Some(reason) = unfinished_reason(&reason.reason) {
+                    emit_warning!(
+                        reason,
+                        "you should specify a more meaningful reason here";
+                        help = "specifying a meaningful reason here will help you and others understand why this is ok in the future"
+                    )
+                }
+            }
+            PreconditionHoldsStatement::WithoutReason {
+                precondition,
+                missing_reason_span,
+                ..
+            } => emit_error!(
                 precondition.span(),
                 "you need to specify a reason why this precondition holds";
-                help = missing_reason_span => "add `, reason = {:?}`", HINT_REASON
-            );
-        } else if let Some(reason) = unfinished_reason(precondition) {
-            emit_warning!(
-                reason,
-                "you should specify a more meaningful reason here";
-                help = "specifying a meaningful reason here will help you and others understand why this is ok in the future"
-            )
+                help = *missing_reason_span => "add `, reason = {:?}`", HINT_REASON
+            ),
         }
     }
+
+    let preconditions = preconditions
+        .into_iter()
+        .map(|holds_statement| holds_statement.into_precondition())
+        .collect();
 
     let mut original_call = None;
 

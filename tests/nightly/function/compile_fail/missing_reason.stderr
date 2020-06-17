@@ -1,11 +1,11 @@
 error: you need to specify a reason why this precondition holds
  --> $DIR/missing_reason.rs:8:18
   |
-8 |     #[assert_pre(condition("must be bar"))]
-  |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+8 |     #[assert_pre("must be bar")]
+  |                  ^^^^^^^^^^^^^
   |
 help: add `, reason = "why does this hold?"`
- --> $DIR/missing_reason.rs:8:41
+ --> $DIR/missing_reason.rs:8:31
   |
-8 |     #[assert_pre(condition("must be bar"))]
-  |                                         ^
+8 |     #[assert_pre("must be bar")]
+  |                               ^

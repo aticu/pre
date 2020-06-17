@@ -2,7 +2,7 @@ error: you need to specify a reason why this precondition holds
 
   = help: add `, reason = "why does this hold?"`
 
- --> $DIR/missing_reason.rs:8:27
+ --> $DIR/missing_reason.rs:8:18
   |
-8 |     #[assert_pre(condition("must be bar"))]
-  |                           ^^^^^^^^^^^^^^^
+8 |     #[assert_pre("must be bar")]
+  |                  ^^^^^^^^^^^^^

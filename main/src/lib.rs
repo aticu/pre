@@ -13,7 +13,7 @@
 /// ```rust
 /// use pre::pre;
 ///
-/// #[pre(condition("slice.len() >= 2"))]
+/// #[pre("slice.len() >= 2")]
 /// unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
 ///     slice.get_unchecked(1)
 /// }
@@ -24,7 +24,7 @@
 /// ```rust
 /// # use pre::pre;
 /// #
-/// # #[pre(condition("slice.len() >= 2"))]
+/// # #[pre("slice.len() >= 2")]
 /// # unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
 /// #     slice.get_unchecked(1)
 /// # }
@@ -35,7 +35,7 @@
 /// fn main() {
 ///     let slice = &[1, 2, 3];
 ///     unsafe {
-///         #[assert_pre(condition("slice.len() >= 2", reason = "slice.len() == 3"))]
+///         #[assert_pre("slice.len() >= 2", reason = "slice.len() == 3")]
 ///         get_second_element_unchecked(slice)
 ///     };
 /// }
@@ -50,7 +50,7 @@
 /// ```rust,compile_fail
 /// # use pre::pre;
 /// #
-/// # #[pre(condition("slice.len() >= 2"))]
+/// # #[pre("slice.len() >= 2")]
 /// # unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
 /// #     slice.get_unchecked(1)
 /// # }
@@ -71,7 +71,7 @@
 /// ```rust,compile_fail
 /// # use pre::pre;
 /// #
-/// # #[pre(condition("slice.len() >= 2"))]
+/// # #[pre("slice.len() >= 2")]
 /// # unsafe fn get_second_element_unchecked(slice: &[i32]) -> &i32 {
 /// #     slice.get_unchecked(1)
 /// # }
@@ -82,7 +82,7 @@
 /// fn main() {
 ///     let slice = &[1];
 ///     unsafe {
-///     #[assert_pre(condition("slice.len() >= 1", reason = "slice.len() == 1"))]
+///     #[assert_pre("slice.len() >= 1", reason = "slice.len() == 1")]
 ///         get_second_element_unchecked(slice)
 ///     };
 /// }
