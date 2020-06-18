@@ -45,11 +45,6 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
 
     for precondition in preconditions {
         match &precondition {
-            Precondition::Custom(string) => {
-                tokens.append_all(quote_spanned! { precondition.span()=>
-                    ::#crate_name::CustomConditionHolds::<#string>
-                });
-            }
             Precondition::ValidPtr {
                 ident, read_write, ..
             } => {
@@ -61,6 +56,11 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
                 };
                 tokens.append_all(quote_spanned! { precondition.span()=>
                     ::#crate_name::ValidPtrConditionHolds::<#ident_lit, #rw_str>
+                });
+            }
+            Precondition::Custom(string) => {
+                tokens.append_all(quote_spanned! { precondition.span()=>
+                    ::#crate_name::CustomConditionHolds::<#string>
                 });
             }
         }
