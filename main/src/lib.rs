@@ -109,7 +109,7 @@ pub use pre_proc_macro::pre;
 pub use pre_proc_macro::check_pre;
 
 /// Provide preconditions for items in a different crate.
-pub use pre_proc_macro::def_pre;
+pub use pre_proc_macro::pre_defs_for;
 
 #[cfg(nightly)]
 mod const_generics_types;

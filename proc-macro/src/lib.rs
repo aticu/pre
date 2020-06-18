@@ -18,13 +18,14 @@ use syn::{
 
 use crate::{
     assert_pre::AssertPreVisitor,
-    def::{DefPreAttr, DefPreModule},
+    pre_defs_for::{DefinitionsForAttr, DefinitionsForModule},
     precondition::Precondition,
 };
 
 mod assert_pre;
 mod call;
-mod def;
+mod crate_name;
+mod pre_defs_for;
 mod precondition;
 
 cfg_if::cfg_if! {
@@ -136,9 +137,9 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn def_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = parse_macro_input!(attr as DefPreAttr);
-    let item = parse_macro_input!(item as DefPreModule);
+pub fn pre_defs_for(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = parse_macro_input!(attr as DefinitionsForAttr);
+    let item = parse_macro_input!(item as DefinitionsForModule);
 
     let output = item.render(attr);
 
