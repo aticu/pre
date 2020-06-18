@@ -16,7 +16,10 @@ use syn::{
 };
 
 use crate::{
-    call::Call, helpers::remove_matching_attrs, precondition::Precondition, render_assert_pre,
+    call::Call,
+    helpers::{remove_matching_attrs, Parenthesized},
+    precondition::Precondition,
+    render_assert_pre,
 };
 
 /// The custom keywords used in the `assert_pre` attribute.
@@ -29,18 +32,10 @@ mod custom_keywords {
 
 /// An `assert_pre` declaration.
 enum AssertPreAttr {
-    DefStatement {
-        /// The parentheses surrounding the attribute.
-        _parentheses: Paren,
-        /// Information where to find the definition of the preconditions.
-        def_statement: DefStatement,
-    },
-    Precondition {
-        /// The parentheses surrounding the attribute.
-        _parentheses: Paren,
-        /// The statement that the precondition holds.
-        precondition: PreconditionHoldsStatement,
-    },
+    /// Information where to find the definition of the preconditions.
+    DefStatement(Parenthesized<DefStatement>),
+    /// A statement that the precondition holds.
+    Precondition(Parenthesized<PreconditionHoldsStatement>),
 }
 
 impl Parse for AssertPreAttr {
@@ -48,21 +43,11 @@ impl Parse for AssertPreAttr {
         let content;
         let parentheses = parenthesized!(content in input);
 
-        if content.peek(custom_keywords::def) {
-            let def_statement = content.parse()?;
-
-            Ok(AssertPreAttr::DefStatement {
-                _parentheses: parentheses,
-                def_statement,
-            })
+        Ok(if content.peek(custom_keywords::def) {
+            AssertPreAttr::DefStatement(Parenthesized::with_parentheses(parentheses, &content)?)
         } else {
-            let precondition = content.parse()?;
-
-            Ok(AssertPreAttr::Precondition {
-                _parentheses: parentheses,
-                precondition,
-            })
-        }
+            AssertPreAttr::Precondition(Parenthesized::with_parentheses(parentheses, &content)?)
+        })
     }
 }
 
@@ -329,9 +314,7 @@ impl VisitMut for AssertPreVisitor {
 
                 match syn::parse2(attr.tokens) {
                     Ok(parsed_attr) => match parsed_attr {
-                        AssertPreAttr::DefStatement {
-                            def_statement: def, ..
-                        } => {
+                        AssertPreAttr::DefStatement(Parenthesized { content: def, .. }) => {
                             if let Some(old_def_statement) = def_statement.replace(def) {
                                 let span = def_statement
                                     .as_ref()
@@ -346,7 +329,10 @@ impl VisitMut for AssertPreVisitor {
                                 );
                             }
                         }
-                        AssertPreAttr::Precondition { precondition, .. } => {
+                        AssertPreAttr::Precondition(Parenthesized {
+                            content: precondition,
+                            ..
+                        }) => {
                             preconditions.push(precondition);
                         }
                     },

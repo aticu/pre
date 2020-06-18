@@ -3,7 +3,12 @@
 use proc_macro2::Span;
 use proc_macro_error::abort_call_site;
 use std::env;
-use syn::{Attribute, Ident};
+use syn::{
+    parenthesized,
+    parse::{Parse, ParseStream},
+    token::Paren,
+    Attribute, Ident,
+};
 
 /// Returns the name of the main crate.
 pub(crate) fn crate_name() -> Ident {
@@ -41,4 +46,35 @@ pub(crate) fn remove_matching_attrs(
     }
 
     removed_attributes
+}
+
+/// A parsable thing surrounded by parentheses.
+pub(crate) struct Parenthesized<T> {
+    /// The parentheses surrounding the object.
+    _parentheses: Paren,
+    /// The content that was surrounded by the parentheses.
+    pub(crate) content: T,
+}
+
+impl<T: Parse> Parenthesized<T> {
+    /// Parses the content, if the parentheses were already parsed.
+    pub(crate) fn with_parentheses(parentheses: Paren, input: ParseStream) -> syn::Result<Self> {
+        Ok(Parenthesized {
+            _parentheses: parentheses,
+            content: input.parse()?,
+        })
+    }
+}
+
+impl<T: Parse> Parse for Parenthesized<T> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        let parentheses = parenthesized!(content in input);
+        let content = content.parse()?;
+
+        Ok(Parenthesized {
+            _parentheses: parentheses,
+            content,
+        })
+    }
 }
