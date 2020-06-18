@@ -7,18 +7,16 @@ use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{emit_error, emit_warning, proc_macro_error};
 use quote::quote;
 use syn::{
-    parenthesized,
     parse::{Parse, ParseStream},
     parse_macro_input,
     spanned::Spanned,
-    token::Paren,
     visit_mut::VisitMut,
     Item, ItemFn,
 };
 
 use crate::{
     assert_pre::AssertPreVisitor,
-    helpers::{crate_name, remove_matching_attrs},
+    helpers::{crate_name, remove_matching_attrs, Parenthesized},
     pre_defs_for::{DefinitionsForAttr, DefinitionsForModule},
     precondition::Precondition,
 };
@@ -41,21 +39,14 @@ cfg_if::cfg_if! {
 
 /// A `pre` attribute.
 struct PreAttr {
-    /// The parentheses surrounding the condition.
-    _parentheses: Paren,
     /// The condition within the attribute.
-    precondition: Precondition,
+    precondition: Parenthesized<Precondition>,
 }
 
 impl Parse for PreAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        let parentheses = parenthesized!(content in input);
-        let precondition = content.parse()?;
-
         Ok(PreAttr {
-            _parentheses: parentheses,
-            precondition,
+            precondition: input.parse()?,
         })
     }
 }
@@ -84,7 +75,7 @@ pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
         attr_span = attr_span.join(attr.span()).unwrap_or_else(|| attr.span());
 
         match syn::parse2::<PreAttr>(attr.tokens) {
-            Ok(parsed_attr) => preconditions.push(parsed_attr.precondition),
+            Ok(parsed_attr) => preconditions.push(parsed_attr.precondition.content),
             Err(err) => emit_error!(err),
         }
     }
