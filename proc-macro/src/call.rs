@@ -25,7 +25,7 @@ impl Call {
         }
     }
 
-    /// Access a mutable reference arguments of the call.
+    /// Grants mutable access to the arguments of the call.
     pub(crate) fn args_mut(&mut self) -> &mut Punctuated<Expr, Comma> {
         match self {
             Call::Function(call) => &mut call.args,
@@ -33,7 +33,11 @@ impl Call {
         }
     }
 
-    /// The name of the function or method.
+    /// The path to the function being called, if present.
+    ///
+    /// For non-function calls, this returns `None`.
+    /// If the expression is a function call expression, but the expression that resolves to the
+    /// function is not a path expression, this also returns `None`.
     #[allow(dead_code)]
     pub(crate) fn path(&self) -> Option<ExprPath> {
         match self {
@@ -45,7 +49,7 @@ impl Call {
         }
     }
 
-    /// Returns true, if a function is called.
+    /// Checks if the call expression is a function call.
     #[allow(dead_code)]
     pub(crate) fn is_function(&self) -> bool {
         match self {
