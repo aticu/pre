@@ -18,13 +18,14 @@ use syn::{
 
 use crate::{
     assert_pre::AssertPreVisitor,
+    helpers::{crate_name, remove_matching_attrs},
     pre_defs_for::{DefinitionsForAttr, DefinitionsForModule},
     precondition::Precondition,
 };
 
 mod assert_pre;
 mod call;
-mod crate_name;
+mod helpers;
 mod pre_defs_for;
 mod precondition;
 
@@ -68,19 +69,13 @@ pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
     });
 
     let mut function = parse_macro_input!(function as ItemFn);
+    let crate_name = crate_name();
+    let crate_path = syn::parse2(quote! { #crate_name::pre }).expect("valid path");
+    let colon_crate_path = syn::parse2(quote! { ::#crate_name::pre }).expect("valid path");
 
-    let mut i = 0;
-    let mut attrs = Vec::new();
-
-    // TODO: Change this to drain_filter once it is stabilized
-    // (see https://github.com/rust-lang/rust/issues/43244)
-    while i < function.attrs.len() {
-        if function.attrs[i].path.is_ident("pre") {
-            attrs.push(function.attrs.remove(i));
-        } else {
-            i += 1;
-        }
-    }
+    let attrs = remove_matching_attrs(&mut function.attrs, |attr| {
+        attr.path.is_ident("pre") || attr.path == crate_path || attr.path == colon_crate_path
+    });
 
     let mut preconditions = vec![parse_macro_input!(attr as Precondition)];
     let mut attr_span = preconditions[0].span();

@@ -14,7 +14,7 @@ use syn::{parse2, spanned::Spanned, ItemFn, LitStr};
 
 use crate::{
     call::Call,
-    crate_name::crate_name,
+    helpers::crate_name,
     precondition::{Precondition, ReadWrite},
 };
 
