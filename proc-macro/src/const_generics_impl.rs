@@ -9,39 +9,21 @@
 //! - error messages for no invariants not very readable
 
 use proc_macro2::{Span, TokenStream};
-use proc_macro_crate::crate_name;
-use proc_macro_error::abort_call_site;
 use quote::{quote, quote_spanned, TokenStreamExt};
-use std::env;
-use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
+use syn::{parse2, spanned::Spanned, ItemFn, LitStr};
 
 use crate::{
     call::Call,
+    crate_name::crate_name,
     precondition::{Precondition, ReadWrite},
 };
-
-/// Returns the name of the main crate.
-fn get_crate_name() -> Ident {
-    let name = match crate_name("pre") {
-        Ok(name) => name,
-        Err(err) => match env::var("CARGO_PKG_NAME") {
-            // This allows for writing documentation tests on the functions themselves.
-            //
-            // This *may* lead to false positives, if someone also names their crate `pre`, however
-            // it will very likely fail to compile at a later stage then.
-            Ok(val) if val == "pre" => "pre".into(),
-            _ => abort_call_site!("crate `pre` must be imported: {}", err),
-        },
-    };
-    Ident::new(&name, Span::call_site())
-}
 
 /// Renders a precondition list to a token stream.
 fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> TokenStream {
     preconditions.sort_unstable();
 
     let mut tokens = TokenStream::new();
-    let crate_name = get_crate_name();
+    let crate_name = crate_name();
 
     for precondition in preconditions {
         match &precondition {
