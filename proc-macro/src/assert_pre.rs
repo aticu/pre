@@ -15,7 +15,9 @@ use syn::{
     Expr, ExprPath, LitStr, Path, Token,
 };
 
-use crate::{call::Call, precondition::Precondition, render_assert_pre};
+use crate::{
+    call::Call, helpers::remove_matching_attrs, precondition::Precondition, render_assert_pre,
+};
 
 /// The custom keywords used in the `assert_pre` attribute.
 mod custom_keywords {
@@ -308,20 +310,9 @@ impl VisitMut for AssertPreVisitor {
         let call: Result<Call, _> = expr.clone().try_into();
 
         if let Ok(mut call) = call {
-            let call_attrs = call.attrs_mut();
-
-            let mut i = 0;
-            let mut attrs = Vec::new();
-
-            // TODO: Change this to drain_filter once it is stabilized
-            // (see https://github.com/rust-lang/rust/issues/43244)
-            while i < call_attrs.len() {
-                if call_attrs[i].path.is_ident(ASSERT_CONDITION_HOLDS_ATTR) {
-                    attrs.push(call_attrs.remove(i));
-                } else {
-                    i += 1;
-                }
-            }
+            let attrs = remove_matching_attrs(call.attrs_mut(), |attr| {
+                attr.path.is_ident(ASSERT_CONDITION_HOLDS_ATTR)
+            });
 
             let mut def_statement = None;
             let mut preconditions = Vec::new();

@@ -12,7 +12,7 @@ use syn::{
     Visibility,
 };
 
-use crate::crate_name::crate_name;
+use crate::helpers::crate_name;
 
 /// The parsed version of the `pre_defs_for` attribute content.
 pub(crate) struct DefinitionsForAttr {
