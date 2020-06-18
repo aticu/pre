@@ -19,6 +19,134 @@ mod custom_keywords {
     custom_keyword!(w);
 }
 
+/// The different kinds of preconditions.
+#[derive(Clone)]
+pub(crate) enum Precondition {
+    /// Requires that the given pointer is valid.
+    ValidPtr {
+        /// The `valid_ptr` keyword.
+        valid_ptr_keyword: custom_keywords::valid_ptr,
+        /// The parentheses following the `valid_ptr` keyword.
+        parentheses: Paren,
+        /// The identifier of the pointer.
+        ident: Ident,
+        /// The comma between the identifier and the read/write information.
+        _comma: Token![,],
+        /// Information on what accesses of the pointer must be valid.
+        read_write: ReadWrite,
+    },
+    /// A custom precondition that is spelled out in a string.
+    Custom(LitStr),
+}
+
+impl fmt::Display for Precondition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Precondition::ValidPtr {
+                ident, read_write, ..
+            } => write!(f, "valid_ptr({}, {})", ident.to_string(), read_write),
+            Precondition::Custom(lit) => write!(f, "{:?}", lit.value()),
+        }
+    }
+}
+
+impl Parse for Precondition {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+
+        if lookahead.peek(custom_keywords::valid_ptr) {
+            let valid_ptr_keyword = input.parse()?;
+            let content;
+            let parentheses = parenthesized!(content in input);
+            let ident = content.parse()?;
+            let comma = content.parse()?;
+            let read_write = content.parse()?;
+
+            if content.is_empty() {
+                Ok(Precondition::ValidPtr {
+                    valid_ptr_keyword,
+                    parentheses,
+                    ident,
+                    _comma: comma,
+                    read_write,
+                })
+            } else {
+                Err(content.error("unexpected token"))
+            }
+        } else if lookahead.peek(LitStr) {
+            Ok(Precondition::Custom(input.parse()?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl Spanned for Precondition {
+    fn span(&self) -> Span {
+        match self {
+            Precondition::ValidPtr {
+                valid_ptr_keyword,
+                parentheses,
+                ..
+            } => valid_ptr_keyword
+                .span()
+                .join(parentheses.span)
+                .unwrap_or_else(|| valid_ptr_keyword.span()),
+            Precondition::Custom(lit) => lit.span(),
+        }
+    }
+}
+
+impl Precondition {
+    /// Returns a unique id for each descriminant.
+    fn descriminant_id(&self) -> usize {
+        match self {
+            Precondition::ValidPtr { .. } => 0,
+            Precondition::Custom(_) => 1,
+        }
+    }
+}
+
+// Define an order for the preconditions here.
+//
+// The exact ordering does not really matter, as long as it is deterministic.
+impl Ord for Precondition {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (
+                Precondition::ValidPtr {
+                    ident: ident_self, ..
+                },
+                Precondition::ValidPtr {
+                    ident: ident_other, ..
+                },
+            ) => ident_self.cmp(&ident_other),
+            (Precondition::Custom(lit_self), Precondition::Custom(lit_other)) => {
+                lit_self.value().cmp(&lit_other.value())
+            }
+            _ => {
+                debug_assert_ne!(self.descriminant_id(), other.descriminant_id());
+
+                self.descriminant_id().cmp(&other.descriminant_id())
+            }
+        }
+    }
+}
+
+impl PartialOrd for Precondition {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Precondition {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Precondition {}
+
 /// Whether something is readable, writable or both.
 #[derive(Clone)]
 pub(crate) enum ReadWrite {
@@ -98,130 +226,6 @@ impl Spanned for ReadWrite {
         }
     }
 }
-
-/// The different kinds of preconditions.
-#[derive(Clone)]
-pub(crate) enum Precondition {
-    /// Requires that the given pointer is valid.
-    ValidPtr {
-        /// The `valid_ptr` keyword.
-        valid_ptr_keyword: custom_keywords::valid_ptr,
-        /// The parentheses following the `valid_ptr` keyword.
-        _parentheses: Paren,
-        /// The identifier of the pointer.
-        ident: Ident,
-        /// The comma between the identifier and the read/write information.
-        _comma: Token![,],
-        /// Information on what accesses of the pointer must be valid.
-        read_write: ReadWrite,
-    },
-    /// A custom precondition that is spelled out in a string.
-    Custom(LitStr),
-}
-
-impl fmt::Display for Precondition {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Precondition::ValidPtr {
-                ident, read_write, ..
-            } => write!(f, "valid_ptr({}, {})", ident.to_string(), read_write),
-            Precondition::Custom(lit) => write!(f, "{:?}", lit.value()),
-        }
-    }
-}
-
-impl Parse for Precondition {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-
-        if lookahead.peek(custom_keywords::valid_ptr) {
-            let valid_ptr_keyword = input.parse()?;
-            let content;
-            let parentheses = parenthesized!(content in input);
-            let ident = content.parse()?;
-            let comma = content.parse()?;
-            let read_write = content.parse()?;
-
-            if content.is_empty() {
-                Ok(Precondition::ValidPtr {
-                    valid_ptr_keyword,
-                    _parentheses: parentheses,
-                    ident,
-                    _comma: comma,
-                    read_write,
-                })
-            } else {
-                Err(content.error("unexpected token"))
-            }
-        } else if lookahead.peek(LitStr) {
-            Ok(Precondition::Custom(input.parse()?))
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-
-impl Spanned for Precondition {
-    fn span(&self) -> Span {
-        match self {
-            Precondition::Custom(lit) => lit.span(),
-            Precondition::ValidPtr {
-                valid_ptr_keyword,
-                read_write,
-                ..
-            } => valid_ptr_keyword
-                .span()
-                .join(read_write.span())
-                .unwrap_or_else(|| valid_ptr_keyword.span()),
-        }
-    }
-}
-
-impl Precondition {
-    /// Returns a unique id for each descriminant.
-    fn descriminant_id(&self) -> usize {
-        match self {
-            Precondition::ValidPtr { .. } => 0,
-            Precondition::Custom(_) => 1,
-        }
-    }
-}
-
-// Define an order for the preconditions here.
-//
-// The exact ordering does not really matter, as long as it is deterministic.
-impl Ord for Precondition {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (
-                Precondition::ValidPtr { ident: ident_a, .. },
-                Precondition::ValidPtr { ident: ident_b, .. },
-            ) => ident_a.to_string().cmp(&ident_b.to_string()),
-            (Precondition::Custom(lit_a), Precondition::Custom(lit_b)) => {
-                lit_a.value().cmp(&lit_b.value())
-            }
-            _ => {
-                debug_assert_ne!(self.descriminant_id(), other.descriminant_id());
-
-                self.descriminant_id().cmp(&other.descriminant_id())
-            }
-        }
-    }
-}
-
-impl PartialOrd for Precondition {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Precondition {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-
-impl Eq for Precondition {}
 
 #[cfg(test)]
 mod tests {
