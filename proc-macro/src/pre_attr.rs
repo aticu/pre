@@ -81,14 +81,12 @@ impl PreAttrVisitor {
             },
         );
 
-        if preconditions.len() > 0 {
-            let output = render_pre(
+        if !preconditions.is_empty() {
+            render_pre(
                 preconditions,
                 function,
-                attr_span.unwrap_or_else(|| Span::call_site()),
-            );
-
-            output
+                attr_span.unwrap_or_else(Span::call_site),
+            )
         } else {
             quote! { #function }
         }
@@ -125,12 +123,9 @@ impl VisitMut for PreAttrVisitor {
     fn visit_item_mut(&mut self, item: &mut Item) {
         visit_item_mut(self, item);
 
-        match item {
-            Item::Fn(function) => {
-                let rendered_function = self.render_function(function, None);
-                mem::swap(item, &mut Item::Verbatim(rendered_function));
-            }
-            _ => (),
+        if let Item::Fn(function) = item {
+            let rendered_function = self.render_function(function, None);
+            mem::swap(item, &mut Item::Verbatim(rendered_function));
         }
     }
 
