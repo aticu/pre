@@ -3,11 +3,12 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_warning;
 use quote::quote;
+use std::mem;
 use syn::{
     parse::{Parse, ParseStream},
     parse2,
     spanned::Spanned,
-    visit_mut::{visit_file_mut, VisitMut},
+    visit_mut::{visit_file_mut, visit_item_mut, VisitMut},
     File, Item, ItemFn, Path,
 };
 
@@ -110,6 +111,18 @@ impl VisitMut for PreAttrVisitor {
             }
 
             visit_file_mut(self, file)
+        }
+    }
+
+    fn visit_item_mut(&mut self, item: &mut Item) {
+        visit_item_mut(self, item);
+
+        match item {
+            Item::Fn(function) => {
+                let rendered_function = self.render_function(function, None);
+                mem::swap(item, &mut Item::Verbatim(rendered_function));
+            }
+            _ => (),
         }
     }
 }
