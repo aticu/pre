@@ -1,11 +1,12 @@
 //! Allows retrieving the name of the main crate.
 
 use proc_macro2::Span;
-use proc_macro_error::abort_call_site;
+use proc_macro_error::{abort_call_site, emit_error};
 use std::env;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
+    spanned::Spanned,
     token::Paren,
     Attribute, Ident,
 };
@@ -26,26 +27,38 @@ pub(crate) fn crate_name() -> Ident {
     Ident::new(&name, Span::call_site())
 }
 
-/// Removes all attributes where `filter` returns true from `attributes` and returns them.
+/// Removes matching attributes, parses them, and then allows visiting them.
 ///
-/// This function effectively fulfills the same purpose as `Vec::drain_filter` and can be removed,
-/// once that is [stablized](https://github.com/rust-lang/rust/issues/43244).
-pub(crate) fn remove_matching_attrs(
+/// This returns the most appropriate span to reference the original attributes.
+pub(crate) fn visit_matching_attrs_parsed<ParsedAttr: Parse>(
     attributes: &mut Vec<Attribute>,
     mut filter: impl FnMut(&mut Attribute) -> bool,
-) -> Vec<Attribute> {
+    mut visit: impl FnMut(ParsedAttr),
+) -> Option<Span> {
+    let mut attr_span: Option<Span> = None;
     let mut i = 0;
-    let mut removed_attributes = Vec::new();
 
+    // TODO: use `drain_filter` once it's stabilized (see
+    // https://github.com/rust-lang/rust/issues/43244).
     while i < attributes.len() {
         if filter(&mut attributes[i]) {
-            removed_attributes.push(attributes.remove(i));
+            let attr = attributes.remove(i);
+
+            attr_span = Some(match attr_span.take() {
+                Some(old_span) => old_span.join(attr.span()).unwrap_or_else(|| attr.span()),
+                None => attr.span(),
+            });
+
+            match syn::parse2::<ParsedAttr>(attr.tokens) {
+                Ok(parsed_attr) => visit(parsed_attr),
+                Err(err) => emit_error!(err),
+            }
         } else {
             i += 1;
         }
     }
 
-    removed_attributes
+    attr_span
 }
 
 /// A parsable thing surrounded by parentheses.

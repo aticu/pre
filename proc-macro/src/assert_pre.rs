@@ -17,7 +17,7 @@ use syn::{
 
 use crate::{
     call::Call,
-    helpers::{remove_matching_attrs, Parenthesized},
+    helpers::{visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_assert_pre,
 };
@@ -295,50 +295,34 @@ impl VisitMut for AssertPreVisitor {
         let call: Result<Call, _> = expr.clone().try_into();
 
         if let Ok(mut call) = call {
-            let attrs = remove_matching_attrs(call.attrs_mut(), |attr| {
-                attr.path.is_ident(ASSERT_CONDITION_HOLDS_ATTR)
-            });
-
             let mut def_statement = None;
             let mut preconditions = Vec::new();
-            // Use the span of any of the attributes, so that the error when the function
-            // definition doesn't have any preconditions points to a precondition and not to the
-            // outer function attribute
-            let mut attr_span: Option<Span> = None;
 
-            for attr in attrs {
-                attr_span = Some(match attr_span.take() {
-                    Some(old_span) => old_span.join(attr.span()).unwrap_or_else(|| attr.span()),
-                    None => attr.span(),
-                });
-
-                match syn::parse2(attr.tokens) {
-                    Ok(parsed_attr) => match parsed_attr {
-                        AssertPreAttr::DefStatement(Parenthesized { content: def, .. }) => {
-                            if let Some(old_def_statement) = def_statement.replace(def) {
-                                let span = def_statement
-                                    .as_ref()
-                                    .expect(
-                                        "options contains a value, because it was just put there",
-                                    )
-                                    .span();
-                                emit_error!(
-                                    span,
-                                    "duplicate `def(...)` statement";
-                                    help = old_def_statement.span() => "there can be just one definition site, try removing the wrong one"
-                                );
-                            }
+            let attr_span = visit_matching_attrs_parsed(
+                call.attrs_mut(),
+                |attr| attr.path.is_ident(ASSERT_CONDITION_HOLDS_ATTR),
+                |parsed_attr| match parsed_attr {
+                    AssertPreAttr::DefStatement(Parenthesized { content: def, .. }) => {
+                        if let Some(old_def_statement) = def_statement.replace(def) {
+                            let span = def_statement
+                                .as_ref()
+                                .expect("options contains a value, because it was just put there")
+                                .span();
+                            emit_error!(
+                                span,
+                                "duplicate `def(...)` statement";
+                                help = old_def_statement.span() => "there can be just one definition site, try removing the wrong one"
+                            );
                         }
-                        AssertPreAttr::Precondition(Parenthesized {
-                            content: precondition,
-                            ..
-                        }) => {
-                            preconditions.push(precondition);
-                        }
-                    },
-                    Err(err) => emit_error!(err),
-                }
-            }
+                    }
+                    AssertPreAttr::Precondition(Parenthesized {
+                        content: precondition,
+                        ..
+                    }) => {
+                        preconditions.push(precondition);
+                    }
+                },
+            );
 
             if let Some(attr_span) = attr_span {
                 let mut new_expr = process_attribute(preconditions, def_statement, attr_span, call);

@@ -58,7 +58,7 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
     preconditions: Vec<Precondition>,
-    mut function: ItemFn,
+    function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
     let preconditions = render_condition_list(preconditions, span);
