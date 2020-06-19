@@ -3,7 +3,7 @@
 use proc_macro2::Span;
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned};
-use std::{convert::TryInto, mem};
+use std::mem;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -11,7 +11,6 @@ use syn::{
     punctuated::Pair,
     spanned::Spanned,
     token::Paren,
-    visit_mut::VisitMut,
     Expr, ExprPath, LitStr, Path, Token,
 };
 
@@ -287,50 +286,41 @@ const HINT_REASON: &str = "why does this hold?";
 /// The name of the macro used to assert that a condition holds.
 const ASSERT_CONDITION_HOLDS_ATTR: &str = "assert_pre";
 
-/// A visitor for `assert_pre` declarations.
-pub(crate) struct AssertPreVisitor;
+/// Renders the expression
+pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
+    let mut def_statement = None;
+    let mut preconditions = Vec::new();
 
-impl VisitMut for AssertPreVisitor {
-    fn visit_expr_mut(&mut self, expr: &mut Expr) {
-        let call: Result<Call, _> = expr.clone().try_into();
-
-        if let Ok(mut call) = call {
-            let mut def_statement = None;
-            let mut preconditions = Vec::new();
-
-            let attr_span = visit_matching_attrs_parsed(
-                call.attrs_mut(),
-                |attr| attr.path.is_ident(ASSERT_CONDITION_HOLDS_ATTR),
-                |parsed_attr| match parsed_attr {
-                    AssertPreAttr::DefStatement(Parenthesized { content: def, .. }) => {
-                        if let Some(old_def_statement) = def_statement.replace(def) {
-                            let span = def_statement
-                                .as_ref()
-                                .expect("options contains a value, because it was just put there")
-                                .span();
-                            emit_error!(
-                                span,
-                                "duplicate `def(...)` statement";
-                                help = old_def_statement.span() => "there can be just one definition site, try removing the wrong one"
-                            );
-                        }
-                    }
-                    AssertPreAttr::Precondition(Parenthesized {
-                        content: precondition,
-                        ..
-                    }) => {
-                        preconditions.push(precondition);
-                    }
-                },
-            );
-
-            if let Some(attr_span) = attr_span {
-                let mut new_expr = process_attribute(preconditions, def_statement, attr_span, call);
-                mem::swap(&mut new_expr, expr);
+    let attr_span = visit_matching_attrs_parsed(
+        call.attrs_mut(),
+        |attr| attr.path.is_ident(ASSERT_CONDITION_HOLDS_ATTR),
+        |parsed_attr| match parsed_attr {
+            AssertPreAttr::DefStatement(Parenthesized { content: def, .. }) => {
+                if let Some(old_def_statement) = def_statement.replace(def) {
+                    let span = def_statement
+                        .as_ref()
+                        .expect("options contains a value, because it was just put there")
+                        .span();
+                    emit_error!(
+                        span,
+                        "duplicate `def(...)` statement";
+                        help = old_def_statement.span() => "there can be just one definition site, try removing the wrong one"
+                    );
+                }
             }
-        }
+            AssertPreAttr::Precondition(Parenthesized {
+                content: precondition,
+                ..
+            }) => {
+                preconditions.push(precondition);
+            }
+        },
+    );
 
-        syn::visit_mut::visit_expr_mut(self, expr);
+    if let Some(attr_span) = attr_span {
+        Some(render_call(preconditions, def_statement, attr_span, call))
+    } else {
+        None
     }
 }
 
@@ -346,7 +336,7 @@ fn unfinished_reason(reason: &LitStr) -> Option<&LitStr> {
 }
 
 /// Process a found `assert_pre` attribute.
-fn process_attribute(
+fn render_call(
     preconditions: Vec<PreconditionHoldsStatement>,
     def_statement: Option<DefStatement>,
     attr_span: Span,

@@ -3,16 +3,18 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_warning;
 use quote::quote;
-use std::mem;
+use std::{convert::TryInto, mem};
 use syn::{
     parse::{Parse, ParseStream},
     parse2,
     spanned::Spanned,
-    visit_mut::{visit_file_mut, visit_item_mut, VisitMut},
-    File, Item, ItemFn, Path,
+    visit_mut::{visit_expr_mut, visit_file_mut, visit_item_fn_mut, visit_item_mut, VisitMut},
+    Expr, File, Item, ItemFn, Path,
 };
 
 use crate::{
+    assert_pre::process_call,
+    call::Call,
     helpers::{crate_name, visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_pre,
@@ -99,18 +101,24 @@ impl VisitMut for PreAttrVisitor {
             let new_item = match &mut file.items[0] {
                 Item::Fn(function) => {
                     let original_attr = self.original_attr.take();
+
+                    visit_item_fn_mut(self, function);
                     self.render_function(function, original_attr)
                 }
-                other_item => quote! { #other_item },
+                other_item => {
+                    visit_item_mut(self, other_item);
+
+                    quote! { #other_item }
+                }
             };
 
             file.items[0] = Item::Verbatim(new_item);
         } else {
-            if let Some(attr) = self.original_attr.as_ref() {
-                emit_warning!(attr.span(), "this is ignored at this scope");
+            if let Some(attr) = self.original_attr.take() {
+                emit_warning!(attr.span(), "this does not do anything");
             }
 
-            visit_file_mut(self, file)
+            visit_file_mut(self, file);
         }
     }
 
@@ -123,6 +131,18 @@ impl VisitMut for PreAttrVisitor {
                 mem::swap(item, &mut Item::Verbatim(rendered_function));
             }
             _ => (),
+        }
+    }
+
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        visit_expr_mut(self, expr);
+
+        let call: Result<Call, _> = expr.clone().try_into();
+
+        if let Ok(call) = call {
+            if let Some(mut new_expr) = process_call(call) {
+                mem::swap(&mut new_expr, expr)
+            }
         }
     }
 }

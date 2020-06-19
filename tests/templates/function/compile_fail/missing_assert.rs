@@ -1,9 +1,9 @@
-use pre::{check_pre, pre};
+use pre::pre;
 
 #[pre("must be bar")]
 fn foo() {}
 
-#[check_pre]
+#[pre]
 fn main() {
     foo()
 }
