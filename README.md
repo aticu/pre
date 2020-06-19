@@ -5,14 +5,14 @@ It is mostly intended for use with `unsafe` functions, as they have precondition
 The main feature of `pre` is that probably incorrect code will not compile.
 
 ```rust
-use pre::{pre, check_pre};
+use pre::pre;
 
 #[pre(valid_ptr(ptr, r))]
 unsafe fn read_twice<T: Copy>(ptr: *const T) -> (T, T) {
     (std::ptr::read(ptr), std::ptr::read(ptr))
 }
 
-#[check_pre]
+#[pre]
 fn main() {
     let ptr: *const i32 = &42;
 
