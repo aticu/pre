@@ -4,26 +4,20 @@
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use proc_macro_error::{emit_error, emit_warning, proc_macro_error};
+use proc_macro_error::{emit_warning, proc_macro_error};
 use quote::quote;
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    spanned::Spanned,
-    visit_mut::VisitMut,
-    Item, ItemFn,
-};
+use syn::{parse_macro_input, visit_mut::VisitMut, File, Item};
 
 use crate::{
     assert_pre::AssertPreVisitor,
-    helpers::{crate_name, remove_matching_attrs, Parenthesized},
+    pre_attr::PreAttrVisitor,
     pre_defs_for::{DefinitionsForAttr, DefinitionsForModule},
-    precondition::Precondition,
 };
 
 mod assert_pre;
 mod call;
 mod helpers;
+mod pre_attr;
 mod pre_defs_for;
 mod precondition;
 
@@ -37,50 +31,21 @@ cfg_if::cfg_if! {
     }
 }
 
-/// A `pre` attribute.
-struct PreAttr {
-    /// The condition within the attribute.
-    precondition: Parenthesized<Precondition>,
-}
-
-impl Parse for PreAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(PreAttr {
-            precondition: input.parse()?,
-        })
-    }
-}
-
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn pre(attr: TokenStream, function: TokenStream) -> TokenStream {
-    let dummy_function: TokenStream2 = function.clone().into();
+pub fn pre(attr: TokenStream, file: TokenStream) -> TokenStream {
+    let dummy_file: TokenStream2 = file.clone().into();
     proc_macro_error::set_dummy(quote! {
-        #dummy_function
+        #dummy_file
     });
 
-    let mut function = parse_macro_input!(function as ItemFn);
-    let crate_name = crate_name();
-    let crate_path = syn::parse2(quote! { #crate_name::pre }).expect("valid path");
-    let colon_crate_path = syn::parse2(quote! { ::#crate_name::pre }).expect("valid path");
+    let mut file = parse_macro_input!(file as File);
 
-    let attrs = remove_matching_attrs(&mut function.attrs, |attr| {
-        attr.path.is_ident("pre") || attr.path == crate_path || attr.path == colon_crate_path
-    });
+    PreAttrVisitor::new(attr.into()).visit_file_mut(&mut file);
 
-    let mut preconditions = vec![parse_macro_input!(attr as Precondition)];
-    let mut attr_span = preconditions[0].span();
-
-    for attr in attrs {
-        attr_span = attr_span.join(attr.span()).unwrap_or_else(|| attr.span());
-
-        match syn::parse2::<PreAttr>(attr.tokens) {
-            Ok(parsed_attr) => preconditions.push(parsed_attr.precondition.content),
-            Err(err) => emit_error!(err),
-        }
-    }
-
-    let output = render_pre(preconditions, function, attr_span);
+    let output = quote! {
+        #file
+    };
 
     // Reset the dummy here, in case errors were emitted in `render_pre`.
     // This will use the most up-to-date version of the generated code.
@@ -112,7 +77,7 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
         #item
     };
 
-    // Reset the dummy here, in case errors were emitted in visiting the syntax tree.
+    // Reset the dummy here, in case errors were emitted while visiting the syntax tree.
     // This will use the most up-to-date version of the generated code.
     proc_macro_error::set_dummy(quote! {
         #output
@@ -123,11 +88,17 @@ pub fn check_pre(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn pre_defs_for(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn pre_defs_for(attr: TokenStream, module: TokenStream) -> TokenStream {
     let attr = parse_macro_input!(attr as DefinitionsForAttr);
-    let item = parse_macro_input!(item as DefinitionsForModule);
+    let module = parse_macro_input!(module as DefinitionsForModule);
 
-    let output = item.render(attr);
+    let output = module.render(attr);
+
+    // Reset the dummy here, in case errors were emitted while generating the code.
+    // This will use the most up-to-date version of the generated code.
+    proc_macro_error::set_dummy(quote! {
+        #output
+    });
 
     output.into()
 }

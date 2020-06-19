@@ -65,7 +65,7 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
     preconditions: Vec<Precondition>,
-    mut function: ItemFn,
+    function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
     if function.sig.receiver().is_some() {
