@@ -25,7 +25,7 @@ pub(crate) enum PreAttr {
     /// An empty attribute to trigger checking for contained attributes.
     Empty,
     /// A precondition that needs to hold for the contained item.
-    Precondition(Parenthesized<Precondition>),
+    Precondition(Precondition),
 }
 
 impl Parse for PreAttr {
@@ -41,7 +41,7 @@ impl Parse for PreAttr {
 /// Applies and removes all visited pre attributes.
 pub(crate) struct PreAttrVisitor {
     /// The original attribute that started the visitor.
-    original_attr: Option<Precondition>,
+    original_attr: Option<PreAttr>,
     /// All paths that signify a valid `pre` attribute.
     valid_pre_attrs_paths: Vec<Path>,
 }
@@ -64,9 +64,15 @@ impl PreAttrVisitor {
     fn render_function(
         &mut self,
         function: &mut ItemFn,
-        additional_precondition: Option<Precondition>,
+        first_attr: Option<PreAttr>,
     ) -> TokenStream {
-        let mut preconditions: Vec<_> = additional_precondition.into_iter().collect();
+        let mut preconditions: Vec<_> = first_attr
+            .and_then(|attr| match attr {
+                PreAttr::Precondition(precondition) => Some(precondition),
+                _ => None,
+            })
+            .into_iter()
+            .collect();
 
         let attr_span = visit_matching_attrs_parsed(
             &mut function.attrs,
@@ -75,9 +81,9 @@ impl PreAttrVisitor {
                     .iter()
                     .any(|path| path == &attr.path)
             },
-            |parsed_attr| match parsed_attr {
+            |parsed_attr: Parenthesized<PreAttr>| match parsed_attr.content {
                 PreAttr::Empty => (),
-                PreAttr::Precondition(precondition) => preconditions.push(precondition.content),
+                PreAttr::Precondition(precondition) => preconditions.push(precondition),
             },
         );
 
@@ -112,8 +118,12 @@ impl VisitMut for PreAttrVisitor {
 
             file.items[0] = Item::Verbatim(new_item);
         } else {
-            if let Some(attr) = self.original_attr.take() {
-                emit_warning!(attr.span(), "this does not do anything");
+            match self.original_attr.take() {
+                Some(PreAttr::Empty) => (),
+                Some(PreAttr::Precondition(precondition)) => {
+                    emit_warning!(precondition.span(), "this does not do anything")
+                }
+                None => (),
             }
 
             visit_file_mut(self, file);
