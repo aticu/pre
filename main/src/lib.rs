@@ -97,6 +97,9 @@ pub use pre_proc_macro::pre_defs_for;
 
 cfg_if::cfg_if! {
     if #[cfg(nightly)] {
+        // *WARNING* These types are not considered to be part of the public API and may change at
+        // any time without notice.
+
         /// A declaration that a custom condition holds.
         #[doc(hidden)]
         pub struct CustomConditionHolds<const CONDITION: &'static str>;
