@@ -95,9 +95,14 @@ pub use pre_proc_macro::pre;
 /// Provide preconditions for items in a different crate.
 pub use pre_proc_macro::pre_defs_for;
 
-#[cfg(nightly)]
-mod const_generics_types;
+cfg_if::cfg_if! {
+    if #[cfg(nightly)] {
+        /// A declaration that a custom condition holds.
+        #[doc(hidden)]
+        pub struct CustomConditionHolds<const CONDITION: &'static str>;
 
-#[cfg(nightly)]
-#[doc(hidden)]
-pub use const_generics_types::*;
+        /// A declaration that the pointer of name `PTR` is valid.
+        #[doc(hidden)]
+        pub struct ValidPtrConditionHolds<const PTR: &'static str, const ACCESS_TYPE: &'static str>;
+    }
+}
