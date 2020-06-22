@@ -8,7 +8,7 @@
 /// contracts the compiler can't
 /// check"](https://doc.rust-lang.org/nomicon/safe-unsafe-meaning.html) for the function.
 ///
-/// Using the `pre` macro, these contracts can be declared:
+/// Using the `pre` macro, these contracts can be declared in the form of preconditions:
 ///
 /// ```rust
 /// use pre::pre;
@@ -19,7 +19,7 @@
 /// }
 /// ```
 ///
-/// Callers are then forced to specify these contracts when calling the function:
+/// Callers are then forced to specify these preconditions when calling the function:
 ///
 /// ```rust
 /// # use pre::pre;
@@ -43,7 +43,7 @@
 /// with specified preconditions directly. If you want more information on why it is required, look
 /// at the ["Checking functionality" section](#checking-functionality).
 ///
-/// If the contracts are not specified, compilation will fail:
+/// If the preconditions are not specified, compilation will fail:
 ///
 /// ```rust,compile_fail
 /// # use pre::pre;
@@ -62,7 +62,7 @@
 /// }
 /// ```
 ///
-/// If the contracts mismatch, compilation will also fail:
+/// If the preconditions mismatch, compilation will also fail:
 ///
 /// ```rust,compile_fail
 /// # use pre::pre;
