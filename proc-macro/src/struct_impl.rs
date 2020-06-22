@@ -14,7 +14,48 @@
 //! - possible name clashes, because the identifier namespace is limited
 //! - error messages not very readable
 //! - the struct must be defined somewhere, which is not possible for a method
-//! - it does not work when
+//!
+//! # What the generated code looks like
+//!
+//! ```rust,ignore
+//! #[pre::pre("some_val > 42.0")]
+//! fn has_preconditions(some_val: f32) -> f32 {
+//!     assert!(some_val > 42.0);
+//!
+//!     some_val
+//! }
+//!
+//! #[pre::pre]
+//! fn main() {
+//!     #[assert_pre("some_val > 42.0", reason = "43.0 > 42.0")]
+//!     has_preconditions(43.0);
+//! }
+//! ```
+//!
+//! turns into
+//!
+//! ```rust,ignore
+//! #[allow(non_camel_case_types)]
+//! #[allow(non_snake_case)]
+//! struct has_preconditions {
+//!     _custom_some__val_20_3e_2042_2e0: (),
+//! }
+//!
+//! fn has_preconditions(some_val: f32, _: has_preconditions) -> f32 {
+//!     assert!(some_val > 42.0);
+//!
+//!     some_val
+//! }
+//!
+//! fn main() {
+//!     has_preconditions(
+//!         43.0,
+//!         has_preconditions {
+//!             _custom_some__val_20_3e_2042_2e0: (),
+//!         },
+//!     );
+//! }
+//! ```
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;

@@ -7,6 +7,43 @@
 //!
 //! # Disadvantages of this approach
 //! - error messages for no invariants not very readable
+//!
+//! # What the generated code looks like
+//!
+//! ```rust,ignore
+//! #[pre::pre("some_val > 42.0")]
+//! fn has_preconditions(some_val: f32) -> f32 {
+//!     assert!(some_val > 42.0);
+//!
+//!     some_val
+//! }
+//!
+//! #[pre::pre]
+//! fn main() {
+//!     #[assert_pre("some_val > 42.0", reason = "43.0 > 42.0")]
+//!     has_preconditions(43.0);
+//! }
+//! ```
+//!
+//! turns into
+//!
+//! ```rust,ignore
+//! fn has_preconditions(
+//!     some_val: f32,
+//!     _: ::core::marker::PhantomData<(::pre::CustomConditionHolds<"some_val > 42.0">,)>,
+//! ) -> f32 {
+//!     assert!(some_val > 42.0);
+//!
+//!     some_val
+//! }
+//!
+//! fn main() {
+//!     has_preconditions(
+//!         43.0,
+//!         ::core::marker::PhantomData::<(::pre::CustomConditionHolds<"some_val > 42.0">,)>,
+//!     );
+//! }
+//! ```
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, TokenStreamExt};
