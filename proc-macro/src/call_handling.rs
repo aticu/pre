@@ -243,7 +243,7 @@ fn unfinished_reason(reason: &LitStr) -> Option<&LitStr> {
 
     reason_val.make_ascii_lowercase();
     match &*reason_val {
-        HINT_REASON | "todo" | "?" => Some(reason),
+        HINT_REASON | "todo" | "?" | "" => Some(reason),
         _ => None,
     }
 }
