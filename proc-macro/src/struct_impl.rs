@@ -18,7 +18,7 @@
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
-use quote::{format_ident, quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned, TokenStreamExt};
 use syn::{parse2, spanned::Spanned, Ident, ItemFn};
 
 use crate::{
@@ -69,31 +69,23 @@ pub(crate) fn render_pre(
     span: Span,
 ) -> TokenStream {
     if function.sig.receiver().is_some() {
-        let span = preconditions
-            .iter()
-            .next()
-            .map(|precondition| precondition.span())
-            .unwrap_or_else(|| function.span());
         emit_error!(
             span,
             "preconditions are not supported for methods on the stable compiler"
         );
+        return quote! { #function };
     }
-
-    let function_name = function.sig.ident.clone();
-    let mut preconditions_rendered = quote! {};
 
     let vis = &function.vis;
+    let mut preconditions_rendered = TokenStream::new();
+    preconditions_rendered.append_all(
+        preconditions
+            .iter()
+            .map(render_as_ident)
+            .map(|ident| quote_spanned! { span=> #vis #ident: (), }),
+    );
 
-    for precondition in preconditions.iter() {
-        let precondition_rendered = render_as_ident(&precondition);
-
-        preconditions_rendered = quote_spanned! { span=>
-            #preconditions_rendered
-            #vis #precondition_rendered: (),
-        };
-    }
-
+    let function_name = function.sig.ident.clone();
     let struct_def = quote_spanned! { span=>
         #[allow(non_camel_case_types)]
         #[allow(non_snake_case)]
@@ -147,16 +139,13 @@ pub(crate) fn render_assert_pre(
         return call;
     }
 
-    let mut preconditions_rendered = quote! {};
-
-    for precondition in preconditions.iter() {
-        let precondition_rendered = render_as_ident(&precondition);
-
-        preconditions_rendered = quote! {
-            #preconditions_rendered
-            #precondition_rendered: (),
-        };
-    }
+    let mut preconditions_rendered = TokenStream::new();
+    preconditions_rendered.append_all(
+        preconditions
+            .iter()
+            .map(render_as_ident)
+            .map(|ident| quote_spanned! { span=> #ident: (), }),
+    );
 
     call.args_mut().push(
         parse2(quote_spanned! { span=>
