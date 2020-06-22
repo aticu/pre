@@ -1,4 +1,40 @@
 //! Provides handling of `pre_defs_for` attributes.
+//!
+//! # What the generated code looks like
+//!
+//! ```rust,ignore
+//! #[pre::pre_defs_for(std)]
+//! mod pre_std {
+//!     mod ptr {
+//!         #[pre(valid_ptr(src, r))]
+//!         unsafe fn read<T>(src: *const T) -> T;
+//!     }
+//! }
+//! ```
+//!
+//! turns into
+//!
+//! ```rust,ignore
+//! mod pre_std {
+//!     #[allow(unused_imports)]
+//!     use pre::pre;
+//!     #[allow(unused_imports)]
+//!     use std::*;
+//!
+//!     pub(crate) mod ptr {
+//!         #[allow(unused_imports)]
+//!         use pre::pre;
+//!         #[allow(unused_imports)]
+//!         use std::ptr::*;
+//!
+//!         #[pre(valid_ptr(src, r))]
+//!         #[inline(always)]
+//!         pub(crate) unsafe fn read<T>(src: *const T) -> T {
+//!             std::ptr::read(src)
+//!         }
+//!     }
+//! }
+//! ```
 
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, TokenStreamExt};
