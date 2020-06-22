@@ -36,16 +36,18 @@
 //! }
 //! ```
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
+use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, TokenStreamExt};
 use std::fmt;
 use syn::{
     braced,
     parse::{Parse, ParseStream},
+    punctuated::Punctuated,
     spanned::Spanned,
     token::Brace,
-    Attribute, FnArg, ForeignItemFn, Ident, ItemUse, Path, PathArguments, PathSegment, Token,
-    Visibility,
+    Attribute, FnArg, ForeignItemFn, GenericArgument, GenericParam, Generics, Ident, ItemUse,
+    LifetimeDef, Path, PathArguments, PathSegment, Token, Type, TypeParam, Visibility,
 };
 
 use crate::helpers::crate_name;
@@ -80,6 +82,81 @@ impl Parse for DefinitionsForAttr {
     }
 }
 
+/// An impl block in a `pre_defs_for` module.
+pub(crate) struct DefinitionsForImplBlock {
+    /// The impl keyword.
+    impl_keyword: Token![impl],
+    /// The generics for the impl block.
+    generics: Generics,
+    /// The type which the impl block is for.
+    self_ty: Box<Type>,
+    /// The brace of the block.
+    brace: Brace,
+    /// The functions which the block applies to.
+    items: Vec<ForeignItemFn>,
+}
+
+impl Parse for DefinitionsForImplBlock {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let impl_keyword = input.parse()?;
+        let generics = input.parse()?;
+        let self_ty = input.parse()?;
+        let where_clause = input.parse()?;
+        let content;
+        let brace = braced!(content in input);
+
+        let mut items = Vec::new();
+
+        while !content.is_empty() {
+            items.push(content.parse()?);
+        }
+
+        Ok(DefinitionsForImplBlock {
+            impl_keyword,
+            generics: Generics {
+                where_clause,
+                ..generics
+            },
+            self_ty,
+            brace,
+            items,
+        })
+    }
+}
+
+impl Spanned for DefinitionsForImplBlock {
+    fn span(&self) -> Span {
+        self.impl_keyword
+            .span()
+            .join(self.brace.span)
+            .unwrap_or_else(|| self.impl_keyword.span())
+    }
+}
+
+impl DefinitionsForImplBlock {
+    /// Generates a token stream that is semantically equivalent to the original token stream.
+    ///
+    /// This should only be used for debug purposes.
+    fn original_token_stream(&self) -> TokenStream {
+        let mut tokens = TokenStream::new();
+
+        let impl_keyword = &self.impl_keyword;
+        tokens.append_all(quote! { #impl_keyword });
+        let generics = &self.generics;
+        tokens.append_all(quote! { #generics });
+        let self_ty = &self.self_ty;
+        tokens.append_all(quote! { #self_ty });
+        let where_clause = &generics.where_clause;
+        tokens.append_all(quote! { #where_clause });
+
+        let mut items = TokenStream::new();
+        items.append_all(&self.items);
+        tokens.append_all(quote! { { #items } });
+
+        tokens
+    }
+}
+
 /// A parsed `pre_defs_for` annotated module.
 pub(crate) struct DefinitionsForModule {
     /// The attributes on the module.
@@ -92,6 +169,8 @@ pub(crate) struct DefinitionsForModule {
     ident: Ident,
     /// The braces surrounding the content.
     braces: Brace,
+    /// The impl blocks contained in the module.
+    impl_blocks: Vec<DefinitionsForImplBlock>,
     /// The imports contained in the module.
     imports: Vec<ItemUse>,
     /// The functions contained in the module.
@@ -115,32 +194,25 @@ impl Parse for DefinitionsForModule {
 
         let content;
         let braces = braced!(content in input);
-        let mut modules = Vec::new();
+        let mut impl_blocks = Vec::new();
         let mut imports = Vec::new();
         let mut functions = Vec::new();
+        let mut modules = Vec::new();
 
-        loop {
-            if content.is_empty() {
-                break;
-            }
-
-            let is_import = <ItemUse as Parse>::parse(&content.fork()).is_ok();
-
-            if is_import {
+        while !content.is_empty() {
+            if content.peek(Token![impl]) {
+                impl_blocks.push(content.parse()?);
+            } else if <ItemUse as Parse>::parse(&content.fork()).is_ok() {
                 imports.push(content.parse()?);
+            } else if <ForeignItemFn as Parse>::parse(&content.fork()).is_ok() {
+                functions.push(content.parse()?);
             } else {
-                let is_function = <ForeignItemFn as Parse>::parse(&content.fork()).is_ok();
-
-                if is_function {
-                    functions.push(content.parse()?);
-                } else {
-                    modules.push(content.parse().map_err(|err| {
-                        syn::Error::new(
-                            err.span(),
-                            "expected a module, a function signature or a use statement",
-                        )
-                    })?);
-                }
+                modules.push(content.parse().map_err(|err| {
+                    syn::Error::new(
+                        err.span(),
+                        "expected a module, a function signature, an impl block or a use statement",
+                    )
+                })?);
             }
         }
 
@@ -150,6 +222,7 @@ impl Parse for DefinitionsForModule {
             mod_token,
             ident,
             braces,
+            impl_blocks,
             imports,
             functions,
             modules,
@@ -226,6 +299,10 @@ impl DefinitionsForModule {
             use #crate_name::pre;
         });
 
+        for impl_block in &self.impl_blocks {
+            render_impl_block(&path, impl_block, &mut brace_content, &visibility);
+        }
+
         for import in &self.imports {
             brace_content.append_all(quote! { #import });
         }
@@ -258,6 +335,11 @@ impl DefinitionsForModule {
         stream.append(self.ident.clone());
 
         let mut content = TokenStream::new();
+        content.append_all(
+            self.impl_blocks
+                .iter()
+                .map(|impl_block| impl_block.original_token_stream()),
+        );
         content.append_all(&self.imports);
         content.append_all(&self.functions);
         content.append_all(self.modules.iter().map(|m| m.original_token_stream()));
@@ -268,7 +350,146 @@ impl DefinitionsForModule {
     }
 }
 
-/// Renders a function inside a `pre_defs_for` attribute to it's final result.
+/// Generates the code for an impl block inside a `pre_defs_for` module.
+fn render_impl_block(
+    path: &Path,
+    impl_block: &DefinitionsForImplBlock,
+    tokens: &mut TokenStream,
+    visibility: &TokenStream,
+) {
+    let ty = if let Type::Path(path) = &*impl_block.self_ty {
+        if path.path.segments.len() != 1 {
+            emit_error!(path, "only paths of length 1 are supported here");
+            return;
+        }
+
+        if let Some(qself) = &path.qself {
+            emit_error!(
+                qself
+                    .lt_token
+                    .span()
+                    .join(qself.gt_token.span())
+                    .unwrap_or_else(|| qself.ty.span()),
+                "qualified paths are not supported here"
+            );
+            return;
+        }
+
+        let ty = &path.path.segments[0];
+
+        if matches!(ty.arguments, PathArguments::Parenthesized(_)) {
+            emit_error!(
+                ty.arguments.span(),
+                "parenthesized type arguments are not supported here"
+            );
+            return;
+        }
+
+        ty
+    } else {
+        emit_error!(
+            impl_block.self_ty.span(),
+            "`impl` block are only supported for structs, enums and unions in this context"
+        );
+        return;
+    };
+
+    let struct_arguments =
+        if let PathArguments::AngleBracketed(mut arguments) = ty.arguments.clone() {
+            let new_arguments: Punctuated<_, Token![,]> = arguments
+                .args
+                .iter_mut()
+                .enumerate()
+                .filter_map(|(i, arg)| -> Option<GenericParam> {
+                    match arg.clone() {
+                        GenericArgument::Lifetime(lifetime) => Some(
+                            LifetimeDef {
+                                attrs: Vec::new(),
+                                lifetime,
+                                colon_token: None,
+                                bounds: Punctuated::new(),
+                            }
+                            .into(),
+                        ),
+                        GenericArgument::Type(ty) => Some(
+                            TypeParam {
+                                attrs: Vec::new(),
+                                ident: Ident::new(&format!("T{}", i), ty.span()),
+                                colon_token: None,
+                                bounds: Punctuated::new(),
+                                eq_token: None,
+                                default: None,
+                            }
+                            .into(),
+                        ),
+                        GenericArgument::Constraint(ty) => Some(
+                            TypeParam {
+                                attrs: Vec::new(),
+                                ident: Ident::new(&format!("T{}", i), ty.span()),
+                                colon_token: None,
+                                bounds: Punctuated::new(),
+                                eq_token: None,
+                                default: None,
+                            }
+                            .into(),
+                        ),
+                        GenericArgument::Const(expr) => {
+                            emit_error!(
+                                expr,
+                                "const generics are currently not supported in this context"
+                            );
+                            None
+                        }
+                        GenericArgument::Binding(binding) => {
+                            emit_error!(binding, "type bindings are not supported in this context");
+                            None
+                        }
+                    }
+                })
+                .collect();
+
+            Some(new_arguments)
+        } else {
+            None
+        };
+
+    // First generate a dummy struct that the impl block will be attached to.
+    // Care must be taken that all generic parameters are used in the struct definition.
+    tokens.append_all(quote_spanned! { impl_block.span()=> #[allow(dead_code)] });
+    tokens.append_all(visibility.clone().into_iter().map(|mut token| {
+        token.set_span(impl_block.span());
+        token
+    }));
+
+    let name = &ty.ident;
+    if let Some(struct_arguments) = struct_arguments {
+        let mut struct_contents: Punctuated<TokenStream, Token![,]> = struct_arguments
+            .iter()
+            .filter_map(|arg| match arg {
+                GenericParam::Lifetime(lifetime) => {
+                    Some(quote_spanned! { lifetime.span()=> &#lifetime () })
+                }
+                GenericParam::Type(ty) => Some(quote_spanned! { ty.span()=> #ty }),
+                GenericParam::Const(_) => None,
+            })
+            .collect();
+
+        // Ensure that it's always a tuple type, even if there is only one element.
+        if !struct_contents.empty_or_trailing() {
+            struct_contents.push_punct(Default::default());
+        }
+
+        tokens.append_all(quote_spanned! { impl_block.span()=>
+            struct #name <#struct_arguments>(::core::marker::PhantomData<(#struct_contents)>);
+        });
+    } else {
+        tokens.append_all(quote_spanned! { impl_block.span()=>
+            struct #name;
+        });
+    }
+}
+
+/// Generates the code for a function inside a `pre_defs_for` module.
 fn render_function(
     path: &Path,
     function: &ForeignItemFn,
