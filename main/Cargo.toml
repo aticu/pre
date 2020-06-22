@@ -8,9 +8,7 @@ edition = "2018"
 
 [dependencies]
 pre-proc-macro = { path = "../proc-macro" }
-
-[dev-dependencies]
-trybuild = "1.0"
+cfg-if = "0.1"
 
 [build-dependencies]
 rustc_version = "0.2"
