@@ -191,7 +191,6 @@ fn render_call(
     if let Some(original_call) = original_call {
         parse2(quote_spanned! {
             original_call.span()=>
-                #[allow(dead_code)]
                 if true {
                     #output
                 } else {
