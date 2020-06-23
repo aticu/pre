@@ -93,7 +93,7 @@ impl DefStatement {
                     );
                 }
             }
-            _ => todo!(),
+            Call::Method(_) => todo!(),
         }
     }
 
