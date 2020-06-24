@@ -8,10 +8,7 @@ use proc_macro_error::proc_macro_error;
 use quote::quote;
 use syn::{parse_macro_input, visit_mut::VisitMut, File};
 
-use crate::{
-    pre_attr::PreAttrVisitor,
-    pre_defs_for::{DefinitionsForAttr, DefinitionsForModule},
-};
+use crate::pre_attr::PreAttrVisitor;
 
 mod call;
 mod call_handling;
@@ -58,8 +55,8 @@ pub fn pre(attr: TokenStream, file: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn pre_defs_for(attr: TokenStream, module: TokenStream) -> TokenStream {
-    let attr = parse_macro_input!(attr as DefinitionsForAttr);
-    let module = parse_macro_input!(module as DefinitionsForModule);
+    let attr = parse_macro_input!(attr as pre_defs_for::Attr);
+    let module = parse_macro_input!(module as pre_defs_for::Module);
 
     let output = module.render(attr);
 
