@@ -48,7 +48,10 @@ use syn::{
     Visibility,
 };
 
+use self::impl_block::ImplBlock;
 use crate::helpers::crate_name;
+
+mod impl_block;
 
 /// The parsed version of the `pre_defs_for` attribute content.
 pub(crate) struct Attr {
@@ -92,6 +95,8 @@ pub(crate) struct Module {
     ident: Ident,
     /// The braces surrounding the content.
     braces: Brace,
+    /// The impl blocks contained in the module.
+    impl_blocks: Vec<ImplBlock>,
     /// The imports contained in the module.
     imports: Vec<ItemUse>,
     /// The functions contained in the module.
@@ -115,32 +120,26 @@ impl Parse for Module {
 
         let content;
         let braces = braced!(content in input);
-        let mut modules = Vec::new();
+
+        let mut impl_blocks = Vec::new();
         let mut imports = Vec::new();
         let mut functions = Vec::new();
+        let mut modules = Vec::new();
 
-        loop {
-            if content.is_empty() {
-                break;
-            }
-
-            let is_import = <ItemUse as Parse>::parse(&content.fork()).is_ok();
-
-            if is_import {
+        while !content.is_empty() {
+            if content.peek(Token![impl]) {
+                impl_blocks.push(content.parse()?);
+            } else if <ItemUse as Parse>::parse(&content.fork()).is_ok() {
                 imports.push(content.parse()?);
+            } else if <ForeignItemFn as Parse>::parse(&content.fork()).is_ok() {
+                functions.push(content.parse()?);
             } else {
-                let is_function = <ForeignItemFn as Parse>::parse(&content.fork()).is_ok();
-
-                if is_function {
-                    functions.push(content.parse()?);
-                } else {
-                    modules.push(content.parse().map_err(|err| {
-                        syn::Error::new(
-                            err.span(),
-                            "expected a module, a function signature or a use statement",
-                        )
-                    })?);
-                }
+                modules.push(content.parse().map_err(|err| {
+                    syn::Error::new(
+                        err.span(),
+                        "expected a module, a function signature, an impl block or a use statement",
+                    )
+                })?);
             }
         }
 
@@ -150,6 +149,7 @@ impl Parse for Module {
             mod_token,
             ident,
             braces,
+            impl_blocks,
             imports,
             functions,
             modules,
@@ -226,12 +226,16 @@ impl Module {
             use #crate_name::pre;
         });
 
+        for impl_block in &self.impl_blocks {
+            impl_block.render(&mut brace_content, &path, &visibility);
+        }
+
         for import in &self.imports {
             brace_content.append_all(quote! { #import });
         }
 
         for function in &self.functions {
-            render_function(&path, function, &mut brace_content, &visibility);
+            render_function(function, &mut brace_content, &path, &visibility);
         }
 
         for module in &self.modules {
@@ -258,6 +262,11 @@ impl Module {
         stream.append(self.ident.clone());
 
         let mut content = TokenStream::new();
+        content.append_all(
+            self.impl_blocks
+                .iter()
+                .map(|impl_block| impl_block.original_token_stream()),
+        );
         content.append_all(&self.imports);
         content.append_all(&self.functions);
         content.append_all(self.modules.iter().map(|m| m.original_token_stream()));
@@ -268,11 +277,11 @@ impl Module {
     }
 }
 
-/// Renders a function inside a `pre_defs_for` attribute to it's final result.
+/// Generates the code for a function inside a `pre_defs_for` module.
 fn render_function(
-    path: &Path,
     function: &ForeignItemFn,
     tokens: &mut TokenStream,
+    path: &Path,
     visibility: &TokenStream,
 ) {
     tokens.append_all(&function.attrs);
