@@ -51,12 +51,12 @@ use syn::{
 use crate::helpers::crate_name;
 
 /// The parsed version of the `pre_defs_for` attribute content.
-pub(crate) struct DefinitionsForAttr {
+pub(crate) struct Attr {
     /// The path of the crate/module to which function calls will be forwarded.
     path: Path,
 }
 
-impl fmt::Display for DefinitionsForAttr {
+impl fmt::Display for Attr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "#[pre_defs_for(")?;
 
@@ -72,16 +72,16 @@ impl fmt::Display for DefinitionsForAttr {
     }
 }
 
-impl Parse for DefinitionsForAttr {
+impl Parse for Attr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(DefinitionsForAttr {
+        Ok(Attr {
             path: input.call(Path::parse_mod_style)?,
         })
     }
 }
 
 /// A parsed `pre_defs_for` annotated module.
-pub(crate) struct DefinitionsForModule {
+pub(crate) struct Module {
     /// The attributes on the module.
     attrs: Vec<Attribute>,
     /// The visibility on the module.
@@ -97,16 +97,16 @@ pub(crate) struct DefinitionsForModule {
     /// The functions contained in the module.
     functions: Vec<ForeignItemFn>,
     /// The submodules contained in the module.
-    modules: Vec<DefinitionsForModule>,
+    modules: Vec<Module>,
 }
 
-impl fmt::Display for DefinitionsForModule {
+impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.original_token_stream())
     }
 }
 
-impl Parse for DefinitionsForModule {
+impl Parse for Module {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let visibility = input.parse()?;
@@ -144,7 +144,7 @@ impl Parse for DefinitionsForModule {
             }
         }
 
-        Ok(DefinitionsForModule {
+        Ok(Module {
             attrs,
             visibility,
             mod_token,
@@ -157,9 +157,9 @@ impl Parse for DefinitionsForModule {
     }
 }
 
-impl DefinitionsForModule {
+impl Module {
     /// Renders this `pre_defs_for` annotated module to its final result.
-    pub(crate) fn render(&self, attr: DefinitionsForAttr) -> TokenStream {
+    pub(crate) fn render(&self, attr: Attr) -> TokenStream {
         let mut tokens = TokenStream::new();
         let crate_name = crate_name();
 
