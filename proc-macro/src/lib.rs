@@ -20,10 +20,10 @@ mod precondition;
 cfg_if::cfg_if! {
     if #[cfg(nightly)] {
         mod const_generics_impl;
-        pub(crate) use crate::const_generics_impl::{render_assert_pre, render_pre};
+        pub(crate) use crate::const_generics_impl::{render_assure, render_pre};
     } else {
         mod struct_impl;
-        pub(crate) use crate::struct_impl::{render_assert_pre, render_pre};
+        pub(crate) use crate::struct_impl::{render_assure, render_pre};
     }
 }
 

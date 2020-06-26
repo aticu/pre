@@ -17,7 +17,7 @@ fn main() {
     let ptr: *const i32 = &42;
 
     let (a, b) = unsafe {
-        #[assert_pre(valid_ptr(ptr, r), reason = "the pointer is created from a reference")]
+        #[assure(valid_ptr(ptr, r), reason = "the pointer is created from a reference")]
         read_twice(ptr)
     };
 

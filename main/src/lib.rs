@@ -33,7 +33,7 @@
 /// fn main() {
 ///     let slice = &[1, 2, 3];
 ///     unsafe {
-///         #[assert_pre("slice.len() >= 2", reason = "slice.len() == 3")]
+///         #[assure("slice.len() >= 2", reason = "slice.len() == 3")]
 ///         get_second_element_unchecked(slice)
 ///     };
 /// }
@@ -76,7 +76,7 @@
 /// fn main() {
 ///     let slice = &[1];
 ///     unsafe {
-///     #[assert_pre("slice.len() >= 1", reason = "slice.len() == 1")]
+///     #[assure("slice.len() >= 1", reason = "slice.len() == 1")]
 ///         get_second_element_unchecked(slice)
 ///     };
 /// }

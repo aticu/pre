@@ -5,6 +5,6 @@ fn foo() {}
 
 #[pre]
 fn main() {
-    #[assert_pre("must be bar")]
+    #[assure("must be bar")]
     foo()
 }
