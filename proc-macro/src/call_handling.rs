@@ -2,11 +2,9 @@
 
 use proc_macro2::Span;
 use proc_macro_error::{emit_error, emit_warning};
-use quote::quote_spanned;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
-    parse2,
     spanned::Spanned,
     Expr, LitStr, Token,
 };
@@ -171,34 +169,17 @@ fn render_call(
     preconditions: Vec<PreconditionHoldsStatement>,
     def_statement: Option<DefStatement>,
     attr_span: Span,
-    mut call: Call,
+    original_call: Call,
 ) -> Expr {
     let preconditions = check_reasons(preconditions);
 
-    let original_call = match def_statement {
-        Some(def_statement) => {
-            let original_call = call.clone();
-
-            def_statement.update_call(&mut call);
-
-            Some(original_call)
-        }
-        None => None,
-    };
-
-    let output = render_assert_pre(preconditions, call, attr_span);
-
-    if let Some(original_call) = original_call {
-        parse2(quote_spanned! {
-            original_call.span()=>
-                if true {
-                    #output
-                } else {
-                    #original_call
-                }
+    if let Some(def_statement) = def_statement {
+        def_statement.update_call(original_call, |call| {
+            render_assert_pre(preconditions, call, attr_span)
         })
-        .expect("if expression is a valid expression")
     } else {
+        let output = render_assert_pre(preconditions, original_call, attr_span);
+
         output.into()
     }
 }

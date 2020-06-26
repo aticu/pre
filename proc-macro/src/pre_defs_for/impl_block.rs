@@ -1,13 +1,14 @@
 //! Handles impl blocks in `pre_defs_for` modules.
 
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, TokenStreamExt};
+use proc_macro_error::emit_error;
+use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
     spanned::Spanned,
     token::Brace,
-    ForeignItemFn, Generics, Path, Token, Type,
+    ForeignItemFn, Generics, Ident, Path, PathArguments, PathSegment, Token, Type,
 };
 
 /// An impl block in a `pre_defs_for` module.
@@ -84,8 +85,66 @@ impl ImplBlock {
         tokens
     }
 
+    /// Returns the type that this impl block is for.
+    pub(crate) fn ty(&self) -> Option<&PathSegment> {
+        if let Type::Path(path) = &*self.self_ty {
+            if path.path.segments.len() != 1 {
+                emit_error!(path, "only paths of length 1 are supported here");
+                return None;
+            }
+
+            if let Some(qself) = &path.qself {
+                emit_error!(
+                    qself
+                        .lt_token
+                        .span()
+                        .join(qself.gt_token.span())
+                        .unwrap_or_else(|| qself.ty.span()),
+                    "qualified paths are not supported here"
+                );
+                return None;
+            }
+
+            let ty = &path.path.segments[0];
+
+            if matches!(ty.arguments, PathArguments::Parenthesized(_)) {
+                emit_error!(
+                    ty.arguments.span(),
+                    "parenthesized type arguments are not supported here"
+                );
+
+                None
+            } else {
+                Some(ty)
+            }
+        } else {
+            emit_error!(
+                self.self_ty.span(),
+                "`impl` block are only supported for structs, enums and unions in this context"
+            );
+
+            None
+        }
+    }
+
     /// Generates the code for an impl block inside a `pre_defs_for` module.
-    pub(crate) fn render(&self, tokens: &mut TokenStream, path: &Path, visibility: &TokenStream) {
-        todo!();
+    pub(crate) fn render(&self, tokens: &mut TokenStream, _path: &Path, visibility: &TokenStream) {
+        let ty = if let Some(ty) = self.ty() {
+            ty
+        } else {
+            return;
+        };
+
+        for function in &self.items {
+            let name = format!("{}__{}__stub__", ty.ident, function.sig.ident);
+            let name = Ident::new(&name, function.span());
+            tokens.append_all(&function.attrs);
+
+            tokens.append_all(quote_spanned! { function.sig.span()=>
+                #[inline(always)]
+                #[allow(non_snake_case)]
+                #visibility fn #name() {}
+            });
+        }
     }
 }
