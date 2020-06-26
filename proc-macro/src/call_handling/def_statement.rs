@@ -37,14 +37,15 @@
 //! ```
 
 use proc_macro2::Span;
-use proc_macro_error::emit_error;
-use quote::quote;
+use proc_macro_error::{abort, emit_error};
+use quote::{quote, quote_spanned};
 use std::mem;
 use syn::{
     parse::{Parse, ParseStream},
+    parse2,
     punctuated::Pair,
     spanned::Spanned,
-    Expr, ExprPath, Path, Token,
+    Expr, ExprCall, ExprPath, Ident, Path, Token,
 };
 
 use crate::{call::Call, helpers::Parenthesized};
@@ -77,23 +78,87 @@ impl Spanned for DefStatement {
 
 impl DefStatement {
     /// Updates the call to use the stored definition.
-    pub(super) fn update_call(self, mut call: &mut Call) {
+    pub(super) fn update_call(self, mut call: Call, render: impl FnOnce(Call) -> Call) -> Expr {
+        let original_call = call.clone();
+        let span = self.span();
+
         match &mut call {
-            Call::Function(ref mut call) => {
-                if let Expr::Path(p) = *call.func.clone() {
-                    mem::swap(
-                        &mut *call.func,
-                        &mut Expr::Path(self.construct_new_path(&p)),
-                    );
+            Call::Function(ref mut fn_call) => {
+                let fn_path = if let Expr::Path(p) = *fn_call.func.clone() {
+                    p
                 } else {
                     emit_error!(
-                        call.func,
+                        fn_call.func,
                         "unable to determine at compile time which function is being called";
                         help = "use a direct path to the function instead"
                     );
-                }
+
+                    return original_call.into();
+                };
+
+                parse2(match self.site.content {
+                    DefStatementSite::Direct { .. } | DefStatementSite::Replace { .. } => {
+                        mem::swap(
+                            &mut *fn_call.func,
+                            &mut Expr::Path(self.construct_new_path(&fn_path)),
+                        );
+                        let call = render(call);
+
+                        quote_spanned! { span=>
+                            if true {
+                                #call
+                            } else {
+                                #original_call
+                            }
+                        }
+                    }
+                    DefStatementSite::ImplBlock { path, .. } => {
+                        let fn_name = if let Some(segment) = fn_path.path.segments.last() {
+                            &segment.ident
+                        } else {
+                            return original_call.into();
+                        };
+
+                        let rendered_call = render(create_empty_call(path, fn_name).into());
+
+                        quote_spanned! { span=>
+                            if true {
+                                #original_call
+                            } else {
+                                #rendered_call;
+
+                                unreachable!()
+                            }
+                        }
+                    }
+                })
+                .expect("valid expression")
             }
-            _ => todo!(),
+            Call::Method(method_call) => match self.site.content {
+                DefStatementSite::ImplBlock { path, .. } | DefStatementSite::Direct { path } => {
+                    let rendered_call = render(create_empty_call(path, &method_call.method).into());
+
+                    parse2(quote_spanned! { span=>
+                        if true {
+                            #original_call
+                        } else {
+                            #rendered_call;
+
+                            unreachable!()
+                        }
+                    })
+                    .expect("valid expression")
+                }
+                DefStatementSite::Replace { .. } => {
+                    emit_error!(
+                        call.span(),
+                        "a replacement `def(...)` statement is not supported for method calls";
+                        help = self.span() => "replace it with a direct location",
+                    );
+
+                    original_call.into()
+                }
+            },
         }
     }
 
@@ -106,6 +171,9 @@ impl DefStatement {
                 for (i, segment) in path.segments.iter().enumerate() {
                     resulting_path.path.segments.insert(i, segment.clone());
                 }
+            }
+            DefStatementSite::ImplBlock { .. } => {
+                unreachable!("construct_new_path is never called for an impl def statement")
             }
             DefStatementSite::Replace { from, to, .. } => {
                 if !check_prefix(&from, &fn_path.path) {
@@ -136,11 +204,44 @@ impl DefStatement {
     }
 }
 
+/// Creates an empty call to the given function.
+fn create_empty_call(mut path: Path, fn_name: &impl std::fmt::Display) -> ExprCall {
+    if let Some(segment_pair) = path.segments.pop() {
+        let val = segment_pair.into_value();
+        let name = format!("{}__{}__stub__", val.ident, fn_name);
+
+        path.segments.push(Ident::new(&name, path.span()).into());
+    } else {
+        abort!(path, "path must have at least one segment");
+    }
+
+    ExprCall {
+        attrs: Vec::new(),
+        func: Box::new(
+            ExprPath {
+                attrs: Vec::new(),
+                qself: None,
+                path,
+            }
+            .into(),
+        ),
+        paren_token: Default::default(),
+        args: Default::default(),
+    }
+}
+
 /// Provides the definition in a `def(...)` statement.
 enum DefStatementSite {
     /// The definition is found directly at the given path.
     Direct {
         /// The path where to find the definition.
+        path: Path,
+    },
+    /// The definition is found inside of an impl block.
+    ImplBlock {
+        /// The `impl` keyword that disambiguates this from a direct def statement.
+        impl_keyword: Token![impl],
+        /// The path to the impl block.
         path: Path,
     },
     /// The definition is found by replacing `from` with `to` in the path.
@@ -156,10 +257,23 @@ enum DefStatementSite {
 
 impl Parse for DefStatementSite {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let impl_keyword = if input.peek(Token![impl]) {
+            Some(input.parse()?)
+        } else {
+            None
+        };
+
         let first_path = input.parse()?;
 
         Ok(if input.is_empty() {
-            DefStatementSite::Direct { path: first_path }
+            if let Some(impl_keyword) = impl_keyword {
+                DefStatementSite::ImplBlock {
+                    impl_keyword,
+                    path: first_path,
+                }
+            } else {
+                DefStatementSite::Direct { path: first_path }
+            }
         } else {
             let arrow = input.parse()?;
             let second_path = input.parse()?;
@@ -177,6 +291,10 @@ impl Spanned for DefStatementSite {
     fn span(&self) -> Span {
         match self {
             DefStatementSite::Direct { path } => path.span(),
+            DefStatementSite::ImplBlock { impl_keyword, path } => impl_keyword
+                .span
+                .join(path.span())
+                .unwrap_or_else(|| path.span()),
             DefStatementSite::Replace { from, to, .. } => {
                 from.span().join(to.span()).unwrap_or_else(|| to.span())
             }

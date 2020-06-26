@@ -72,13 +72,13 @@ impl From<ExprMethodCall> for Call {
 }
 
 impl TryFrom<Expr> for Call {
-    type Error = ();
+    type Error = Expr;
 
     fn try_from(value: Expr) -> Result<Self, Self::Error> {
         match value {
             Expr::Call(call) => Ok(call.into()),
             Expr::MethodCall(call) => Ok(call.into()),
-            _ => Err(()),
+            _ => Err(value),
         }
     }
 }
