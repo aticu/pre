@@ -1,4 +1,4 @@
-//! Functionality for parsing and visiting `assert_pre` attributes.
+//! Functionality for parsing and visiting `assure` attributes.
 
 use proc_macro2::Span;
 use proc_macro_error::{emit_error, emit_warning};
@@ -14,12 +14,12 @@ use crate::{
     call::Call,
     helpers::{visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
-    render_assert_pre,
+    render_assure,
 };
 
 mod def_statement;
 
-/// The custom keywords used in the `assert_pre` attribute.
+/// The custom keywords used in the `assure` attribute.
 mod custom_keywords {
     use syn::custom_keyword;
 
@@ -27,23 +27,23 @@ mod custom_keywords {
     custom_keyword!(reason);
 }
 
-/// An `assert_pre` declaration.
-enum AssertPreAttr {
+/// An `assure` declaration.
+enum AssureAttr {
     /// Information where to find the definition of the preconditions.
     DefStatement(Parenthesized<DefStatement>),
     /// A statement that the precondition holds.
     Precondition(Parenthesized<PreconditionHoldsStatement>),
 }
 
-impl Parse for AssertPreAttr {
+impl Parse for AssureAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         let parentheses = parenthesized!(content in input);
 
         Ok(if content.peek(custom_keywords::def) {
-            AssertPreAttr::DefStatement(Parenthesized::with_parentheses(parentheses, &content)?)
+            AssureAttr::DefStatement(Parenthesized::with_parentheses(parentheses, &content)?)
         } else {
-            AssertPreAttr::Precondition(Parenthesized::with_parentheses(parentheses, &content)?)
+            AssureAttr::Precondition(Parenthesized::with_parentheses(parentheses, &content)?)
         })
     }
 }
@@ -133,9 +133,9 @@ pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
 
     let attr_span = visit_matching_attrs_parsed(
         call.attrs_mut(),
-        |attr| attr.path.is_ident("assert_pre"),
+        |attr| attr.path.is_ident("assure"),
         |parsed_attr| match parsed_attr {
-            AssertPreAttr::DefStatement(Parenthesized { content: def, .. }) => {
+            AssureAttr::DefStatement(Parenthesized { content: def, .. }) => {
                 if let Some(old_def_statement) = def_statement.replace(def) {
                     let span = def_statement
                         .as_ref()
@@ -148,7 +148,7 @@ pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
                     );
                 }
             }
-            AssertPreAttr::Precondition(Parenthesized {
+            AssureAttr::Precondition(Parenthesized {
                 content: precondition,
                 ..
             }) => {
@@ -164,7 +164,7 @@ pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
     }
 }
 
-/// Process a found `assert_pre` attribute.
+/// Process a found `assure` attribute.
 fn render_call(
     preconditions: Vec<PreconditionHoldsStatement>,
     def_statement: Option<DefStatement>,
@@ -175,10 +175,10 @@ fn render_call(
 
     if let Some(def_statement) = def_statement {
         def_statement.update_call(original_call, |call| {
-            render_assert_pre(preconditions, call, attr_span)
+            render_assure(preconditions, call, attr_span)
         })
     } else {
-        let output = render_assert_pre(preconditions, original_call, attr_span);
+        let output = render_assure(preconditions, original_call, attr_span);
 
         output.into()
     }

@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
  --> $DIR/extra_precondition.rs:8:5
   |
-8 | /     #[assert_pre("must be bar", reason = "is bar")]
-9 | |     #[assert_pre("must be baz", reason = "is baz")]
-  | |___________________________________________________^ expected a tuple with 1 element, found one with 2 elements
+8 | /     #[assure("must be bar", reason = "is bar")]
+9 | |     #[assure("must be baz", reason = "is baz")]
+  | |_______________________________________________^ expected a tuple with 1 element, found one with 2 elements
   |
   = note: expected struct `std::marker::PhantomData<(pre::CustomConditionHolds<"must be bar">,)>`
              found struct `std::marker::PhantomData<(pre::CustomConditionHolds<"must be bar">, pre::CustomConditionHolds<"must be baz">)>`

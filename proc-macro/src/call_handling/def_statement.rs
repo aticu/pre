@@ -8,8 +8,8 @@
 //! #[pre::pre]
 //! fn main() {
 //!     unsafe {
-//!         #[assert_pre(def(pre_std::ptr))]
-//!         #[assert_pre(valid_ptr(src, r), reason = "a reference is a valid pointer")]
+//!         #[assure(def(pre_std::ptr))]
+//!         #[assure(valid_ptr(src, r), reason = "a reference is a valid pointer")]
 //!         read(&42);
 //!     }
 //! }
@@ -24,7 +24,7 @@
 //! fn main() {
 //!     unsafe {
 //!         if true {
-//!             #[assert_pre(valid_ptr(src, r), reason = "a reference is a valid pointer")]
+//!             #[assure(valid_ptr(src, r), reason = "a reference is a valid pointer")]
 //!             pre_std::ptr::read(&42)
 //!         } else {
 //!             // To silence the unused import warnings.

@@ -27,7 +27,7 @@
 //!
 //! #[pre::pre]
 //! fn main() {
-//!     #[assert_pre("some_val > 42.0", reason = "43.0 > 42.0")]
+//!     #[assure("some_val > 42.0", reason = "43.0 > 42.0")]
 //!     has_preconditions(43.0);
 //! }
 //! ```
@@ -149,11 +149,7 @@ pub(crate) fn render_pre(
 }
 
 /// Generates the code for the call with the precondition handling added.
-pub(crate) fn render_assert_pre(
-    preconditions: Vec<Precondition>,
-    mut call: Call,
-    span: Span,
-) -> Call {
+pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, span: Span) -> Call {
     if !call.is_function() {
         emit_error!(
             call,
