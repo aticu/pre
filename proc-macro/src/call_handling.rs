@@ -12,7 +12,7 @@ use syn::{
 use self::def_statement::DefStatement;
 use crate::{
     call::Call,
-    helpers::{visit_matching_attrs_parsed, Parenthesized},
+    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_assure,
 };
@@ -133,7 +133,7 @@ pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
 
     let attr_span = visit_matching_attrs_parsed(
         call.attrs_mut(),
-        |attr| attr.path.is_ident("assure"),
+        |attr| is_attr("assure", attr),
         |parsed_attr| match parsed_attr {
             AssureAttr::DefStatement(Parenthesized { content: def, .. }) => {
                 if let Some(old_def_statement) = def_statement.replace(def) {
