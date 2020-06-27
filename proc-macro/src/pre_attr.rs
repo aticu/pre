@@ -9,13 +9,13 @@ use syn::{
     parse2,
     spanned::Spanned,
     visit_mut::{visit_expr_mut, visit_file_mut, visit_item_fn_mut, visit_item_mut, VisitMut},
-    Expr, File, Item, ItemFn, Path,
+    Expr, File, Item, ItemFn,
 };
 
 use crate::{
     call::Call,
     call_handling::process_call,
-    helpers::{crate_name, visit_matching_attrs_parsed, Parenthesized},
+    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_pre,
 };
@@ -42,21 +42,13 @@ impl Parse for PreAttr {
 pub(crate) struct PreAttrVisitor {
     /// The original attribute that started the visitor.
     original_attr: Option<PreAttr>,
-    /// All paths that signify a valid `pre` attribute.
-    valid_pre_attrs_paths: Vec<Path>,
 }
 
 impl PreAttrVisitor {
     /// Creates a new visitor for the syntax tree that `original_attr` was attached to.
     pub(crate) fn new(original_attr: TokenStream) -> PreAttrVisitor {
-        let crate_name = crate_name();
-        let direct_path = syn::parse2(quote! { pre }).expect("valid path");
-        let crate_path = syn::parse2(quote! { #crate_name::pre }).expect("valid path");
-        let colon_crate_path = syn::parse2(quote! { ::#crate_name::pre }).expect("valid path");
-
         PreAttrVisitor {
             original_attr: parse2(original_attr).ok(),
-            valid_pre_attrs_paths: vec![direct_path, crate_path, colon_crate_path],
         }
     }
 
@@ -76,11 +68,7 @@ impl PreAttrVisitor {
 
         let attr_span = visit_matching_attrs_parsed(
             &mut function.attrs,
-            |attr| {
-                self.valid_pre_attrs_paths
-                    .iter()
-                    .any(|path| path == &attr.path)
-            },
+            |attr| is_attr("pre", attr),
             |parsed_attr: Parenthesized<PreAttr>| match parsed_attr.content {
                 PreAttr::Empty => (),
                 PreAttr::Precondition(precondition) => preconditions.push(precondition),
