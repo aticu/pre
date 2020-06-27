@@ -47,11 +47,11 @@
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, TokenStreamExt};
-use syn::{parse2, spanned::Spanned, ItemFn, LitStr};
+use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
 
 use crate::{
     call::Call,
-    helpers::crate_name,
+    helpers::CRATE_NAME,
     precondition::{Precondition, ReadWrite},
 };
 
@@ -60,7 +60,7 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
     preconditions.sort_unstable();
 
     let mut tokens = TokenStream::new();
-    let crate_name = crate_name();
+    let crate_name = Ident::new(&CRATE_NAME, span);
 
     for precondition in preconditions {
         match &precondition {

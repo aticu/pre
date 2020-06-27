@@ -1,5 +1,6 @@
 //! Allows retrieving the name of the main crate.
 
+use lazy_static::lazy_static;
 use proc_macro2::Span;
 use proc_macro_error::{abort_call_site, emit_error};
 use std::env;
@@ -8,23 +9,39 @@ use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
     token::Paren,
-    Attribute, Ident,
+    Attribute,
 };
 
-/// Returns the name of the main crate.
-pub(crate) fn crate_name() -> Ident {
-    let name = match proc_macro_crate::crate_name("pre") {
-        Ok(name) => name,
-        Err(err) => match env::var("CARGO_PKG_NAME") {
-            // This allows for writing documentation tests on the functions themselves.
-            //
-            // This *may* lead to false positives, if someone also names their crate `pre`, however
-            // it will very likely fail to compile at a later stage then.
-            Ok(val) if val == "pre" => "pre".into(),
-            _ => abort_call_site!("crate `pre` must be imported: {}", err),
-        },
+lazy_static! {
+    /// Returns the name of the main `pre` crate.
+    pub(crate) static ref CRATE_NAME: String = {
+        match proc_macro_crate::crate_name("pre") {
+            Ok(name) => name,
+            Err(err) => match env::var("CARGO_PKG_NAME") {
+                // This allows for writing documentation tests on the functions themselves.
+                //
+                // This *may* lead to false positives, if someone also names their crate `pre`, however
+                // it will very likely fail to compile at a later stage then.
+                Ok(val) if val == "pre" => "pre".into(),
+                _ => abort_call_site!("crate `pre` must be imported: {}", err),
+            },
+        }
     };
-    Ident::new(&name, Span::call_site())
+}
+
+/// Checks if the given attribute is an `attr_to_check` attribute of the main crate.
+pub(crate) fn is_attr(attr_to_check: &str, attr: &Attribute) -> bool {
+    let path = &attr.path;
+
+    if path.is_ident(attr_to_check) {
+        true
+    } else if path.segments.len() == 2 {
+        // Note that `Path::leading_colon` is not checked here, so paths both with and without a
+        // leading colon are accepted here
+        path.segments[0].ident == *CRATE_NAME && path.segments[1].ident == attr_to_check
+    } else {
+        false
+    }
 }
 
 /// Removes matching attributes, parses them, and then allows visiting them.

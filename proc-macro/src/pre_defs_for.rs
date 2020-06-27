@@ -36,7 +36,7 @@
 //! }
 //! ```
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, TokenStreamExt};
 use std::fmt;
 use syn::{
@@ -49,7 +49,7 @@ use syn::{
 };
 
 use self::impl_block::ImplBlock;
-use crate::helpers::crate_name;
+use crate::helpers::CRATE_NAME;
 
 mod impl_block;
 
@@ -161,9 +161,8 @@ impl Module {
     /// Renders this `pre_defs_for` annotated module to its final result.
     pub(crate) fn render(&self, attr: Attr) -> TokenStream {
         let mut tokens = TokenStream::new();
-        let crate_name = crate_name();
 
-        self.render_inner(attr.path, &mut tokens, None, &crate_name);
+        self.render_inner(attr.path, &mut tokens, None);
 
         tokens
     }
@@ -176,7 +175,6 @@ impl Module {
         mut path: Path,
         tokens: &mut TokenStream,
         visibility: Option<&TokenStream>,
-        crate_name: &Ident,
     ) {
         tokens.append_all(&self.attrs);
 
@@ -218,6 +216,7 @@ impl Module {
 
         let mut brace_content = TokenStream::new();
 
+        let crate_name = Ident::new(&CRATE_NAME, Span::call_site());
         brace_content.append_all(quote! {
             #[allow(unused_imports)]
             use #path::*;
@@ -239,12 +238,7 @@ impl Module {
         }
 
         for module in &self.modules {
-            module.render_inner(
-                path.clone(),
-                &mut brace_content,
-                Some(&visibility),
-                crate_name,
-            );
+            module.render_inner(path.clone(), &mut brace_content, Some(&visibility));
         }
 
         tokens.append_all(quote_spanned! { self.braces.span=> { #brace_content } });
