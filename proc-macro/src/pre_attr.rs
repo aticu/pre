@@ -1,7 +1,7 @@
 //! Defines the `pre` attribute and how it is handled.
 
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::emit_warning;
+use proc_macro_error::{emit_error, emit_warning};
 use quote::quote;
 use std::{convert::TryInto, mem};
 use syn::{
@@ -47,9 +47,26 @@ pub(crate) struct PreAttrVisitor {
 impl PreAttrVisitor {
     /// Creates a new visitor for the syntax tree that `original_attr` was attached to.
     pub(crate) fn new(original_attr: TokenStream) -> PreAttrVisitor {
-        PreAttrVisitor {
-            original_attr: parse2(original_attr).ok(),
-        }
+        let original_attr = if !original_attr.is_empty() {
+            let span = original_attr.span();
+
+            match parse2(original_attr) {
+                Ok(attr) => Some(attr),
+                Err(err) => {
+                    emit_error!(
+                        span,
+                        "expected either nothing or a valid `pre` attribute here"
+                    );
+                    emit_error!(err);
+
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        PreAttrVisitor { original_attr }
     }
 
     /// Renders the given function and applies all `pre` attributes to it.
