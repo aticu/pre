@@ -3,13 +3,12 @@
 use proc_macro2::Span;
 use proc_macro_error::{emit_error, emit_warning};
 use syn::{
-    parenthesized,
     parse::{Parse, ParseStream},
     spanned::Spanned,
     Expr, LitStr, Token,
 };
 
-use self::def_statement::DefStatement;
+use self::forward::Forward;
 use crate::{
     call::Call,
     helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized},
@@ -17,39 +16,17 @@ use crate::{
     render_assure,
 };
 
-mod def_statement;
+mod forward;
 
 /// The custom keywords used in the `assure` attribute.
 mod custom_keywords {
     use syn::custom_keyword;
 
-    custom_keyword!(def);
     custom_keyword!(reason);
 }
 
-/// An `assure` declaration.
+/// An attribute with an assurance that a precondition holds.
 enum AssureAttr {
-    /// Information where to find the definition of the preconditions.
-    DefStatement(Parenthesized<DefStatement>),
-    /// A statement that the precondition holds.
-    Precondition(Parenthesized<PreconditionHoldsStatement>),
-}
-
-impl Parse for AssureAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        let parentheses = parenthesized!(content in input);
-
-        Ok(if content.peek(custom_keywords::def) {
-            AssureAttr::DefStatement(Parenthesized::with_parentheses(parentheses, &content)?)
-        } else {
-            AssureAttr::Precondition(Parenthesized::with_parentheses(parentheses, &content)?)
-        })
-    }
-}
-
-/// A statement that a precondition holds.
-enum PreconditionHoldsStatement {
     /// The statement had a reason attached to it.
     WithReason {
         /// The precondition that was stated.
@@ -60,6 +37,10 @@ enum PreconditionHoldsStatement {
         reason: Reason,
     },
     /// The statement written without a reason.
+    ///
+    /// This is not permitted semantically.
+    /// The only reason it is accepted syntactically is that it allows providing more relevant
+    /// error messages.
     WithoutReason {
         /// The precondition that was stated.
         precondition: Precondition,
@@ -68,21 +49,21 @@ enum PreconditionHoldsStatement {
     },
 }
 
-impl From<PreconditionHoldsStatement> for Precondition {
-    fn from(holds_statement: PreconditionHoldsStatement) -> Precondition {
+impl From<AssureAttr> for Precondition {
+    fn from(holds_statement: AssureAttr) -> Precondition {
         match holds_statement {
-            PreconditionHoldsStatement::WithoutReason { precondition, .. } => precondition,
-            PreconditionHoldsStatement::WithReason { precondition, .. } => precondition,
+            AssureAttr::WithoutReason { precondition, .. } => precondition,
+            AssureAttr::WithReason { precondition, .. } => precondition,
         }
     }
 }
 
-impl Parse for PreconditionHoldsStatement {
+impl Parse for AssureAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let precondition = input.parse()?;
 
         if input.is_empty() {
-            Ok(PreconditionHoldsStatement::WithoutReason {
+            Ok(AssureAttr::WithoutReason {
                 precondition,
                 missing_reason_span: input.span(),
             })
@@ -90,7 +71,7 @@ impl Parse for PreconditionHoldsStatement {
             let comma = input.parse()?;
             let reason = input.parse()?;
 
-            Ok(PreconditionHoldsStatement::WithReason {
+            Ok(AssureAttr::WithReason {
                 precondition,
                 _comma: comma,
                 reason,
@@ -128,37 +109,35 @@ const HINT_REASON: &str = "why does this hold?";
 
 /// Renders the call, if necessary.
 pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
-    let mut def_statement = None;
+    let mut forward = None;
     let mut preconditions = Vec::new();
 
     let attr_span = visit_matching_attrs_parsed(
         call.attrs_mut(),
         |attr| is_attr("assure", attr),
-        |parsed_attr| match parsed_attr {
-            AssureAttr::DefStatement(Parenthesized { content: def, .. }) => {
-                if let Some(old_def_statement) = def_statement.replace(def) {
-                    let span = def_statement
-                        .as_ref()
-                        .expect("options contains a value, because it was just put there")
-                        .span();
-                    emit_error!(
-                        span,
-                        "duplicate `def(...)` statement";
-                        help = old_def_statement.span() => "there can be just one definition site, try removing the wrong one"
-                    );
-                }
-            }
-            AssureAttr::Precondition(Parenthesized {
-                content: precondition,
-                ..
-            }) => {
-                preconditions.push(precondition);
+        |Parenthesized {
+             content: precondition,
+             ..
+         }| preconditions.push(precondition),
+    );
+    let _ = visit_matching_attrs_parsed(
+        call.attrs_mut(),
+        |attr| is_attr("forward", attr),
+        |Parenthesized { content: fwd, .. }: Parenthesized<Forward>| {
+            let span = fwd.span();
+
+            if let Some(old_forward) = forward.replace(fwd) {
+                emit_error!(
+                    span,
+                    "duplicate `forward` attribute";
+                    help = old_forward.span() => "there can be just one location, try removing the wrong one"
+                );
             }
         },
     );
 
     if let Some(attr_span) = attr_span {
-        Some(render_call(preconditions, def_statement, attr_span, call))
+        Some(render_call(preconditions, forward, attr_span, call))
     } else {
         None
     }
@@ -166,15 +145,15 @@ pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
 
 /// Process a found `assure` attribute.
 fn render_call(
-    preconditions: Vec<PreconditionHoldsStatement>,
-    def_statement: Option<DefStatement>,
+    preconditions: Vec<AssureAttr>,
+    forward: Option<Forward>,
     attr_span: Span,
     original_call: Call,
 ) -> Expr {
     let preconditions = check_reasons(preconditions);
 
-    if let Some(def_statement) = def_statement {
-        def_statement.update_call(original_call, |call| {
+    if let Some(forward) = forward {
+        forward.update_call(original_call, |call| {
             render_assure(preconditions, call, attr_span)
         })
     } else {
@@ -187,10 +166,10 @@ fn render_call(
 /// Checks that all reasons exist and make sense.
 ///
 /// This function emits errors, if appropriate.
-fn check_reasons(preconditions: Vec<PreconditionHoldsStatement>) -> Vec<Precondition> {
+fn check_reasons(preconditions: Vec<AssureAttr>) -> Vec<Precondition> {
     for precondition in preconditions.iter() {
         match precondition {
-            PreconditionHoldsStatement::WithReason { reason, .. } => {
+            AssureAttr::WithReason { reason, .. } => {
                 if let Some(reason) = unfinished_reason(&reason.reason) {
                     emit_warning!(
                         reason,
@@ -199,7 +178,7 @@ fn check_reasons(preconditions: Vec<PreconditionHoldsStatement>) -> Vec<Precondi
                     )
                 }
             }
-            PreconditionHoldsStatement::WithoutReason {
+            AssureAttr::WithoutReason {
                 precondition,
                 missing_reason_span,
                 ..

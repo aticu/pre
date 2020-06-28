@@ -1,4 +1,4 @@
-//! Handles specified alternative definition sites for functions.
+//! Handles forwarding function calls to a different location.
 //!
 //! # What the generated code looks like
 //!
@@ -8,7 +8,7 @@
 //! #[pre::pre]
 //! fn main() {
 //!     unsafe {
-//!         #[assure(def(pre_std::ptr))]
+//!         #[forward(pre_std::ptr)]
 //!         #[assure(valid_ptr(src, r), reason = "a reference is a valid pointer")]
 //!         read(&42);
 //!     }
@@ -48,36 +48,86 @@ use syn::{
     Expr, ExprCall, ExprPath, Ident, Path, Token,
 };
 
-use crate::{call::Call, helpers::Parenthesized};
+use crate::call::Call;
 
-/// Provides information where to find the definition of the preconditions.
-pub(super) struct DefStatement {
-    /// The def keyword.
-    def_keyword: super::custom_keywords::def,
-    /// Information about the definition site.
-    site: Parenthesized<DefStatementSite>,
+/// The content of a `forward` attribute.
+///
+/// This specifies where the function the call should be forwarded to is located.
+pub(crate) enum Forward {
+    /// The given path should be added before the already present path.
+    ///
+    /// For a method, this is equivalent to an `impl` forward attribute.
+    Direct {
+        /// The path that should be added.
+        path: Path,
+    },
+    /// The function or method to be called is located at the specified impl block.
+    ImplBlock {
+        /// The `impl` keyword that disambiguates this from a direct forward attribute.
+        impl_keyword: Token![impl],
+        /// The path to the impl block.
+        path: Path,
+    },
+    /// The function to be called is found by replacing `from` with `to` in the path.
+    Replace {
+        /// The prefix of the path that should be replaced.
+        from: Path,
+        /// The arrow token that marks the replacement.
+        _arrow: Token![->],
+        /// The path that should be prepended instead of the removed prefix.
+        to: Path,
+    },
 }
 
-impl Parse for DefStatement {
+impl Parse for Forward {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let def_keyword = input.parse()?;
-        let site = input.parse()?;
+        let impl_keyword = if input.peek(Token![impl]) {
+            Some(input.parse()?)
+        } else {
+            None
+        };
 
-        Ok(DefStatement { def_keyword, site })
+        let first_path = input.parse()?;
+
+        Ok(if input.is_empty() {
+            if let Some(impl_keyword) = impl_keyword {
+                Forward::ImplBlock {
+                    impl_keyword,
+                    path: first_path,
+                }
+            } else {
+                Forward::Direct { path: first_path }
+            }
+        } else {
+            let arrow = input.parse()?;
+            let second_path = input.parse()?;
+
+            Forward::Replace {
+                from: first_path,
+                _arrow: arrow,
+                to: second_path,
+            }
+        })
     }
 }
 
-impl Spanned for DefStatement {
+impl Spanned for Forward {
     fn span(&self) -> Span {
-        self.def_keyword
-            .span()
-            .join(self.site.parentheses.span)
-            .unwrap_or_else(|| self.site.content.span())
+        match self {
+            Forward::Direct { path } => path.span(),
+            Forward::ImplBlock { impl_keyword, path } => impl_keyword
+                .span
+                .join(path.span())
+                .unwrap_or_else(|| path.span()),
+            Forward::Replace { from, to, .. } => {
+                from.span().join(to.span()).unwrap_or_else(|| to.span())
+            }
+        }
     }
 }
 
-impl DefStatement {
-    /// Updates the call to use the stored definition.
+impl Forward {
+    /// Updates the call to use the forwarded location.
     pub(super) fn update_call(self, mut call: Call, render: impl FnOnce(Call) -> Call) -> Expr {
         let original_call = call.clone();
         let span = self.span();
@@ -96,8 +146,8 @@ impl DefStatement {
                     return original_call.into();
                 };
 
-                parse2(match self.site.content {
-                    DefStatementSite::Direct { .. } | DefStatementSite::Replace { .. } => {
+                parse2(match self {
+                    Forward::Direct { .. } | Forward::Replace { .. } => {
                         mem::swap(
                             &mut *fn_call.func,
                             &mut Expr::Path(self.construct_new_path(&fn_path)),
@@ -112,7 +162,7 @@ impl DefStatement {
                             }
                         }
                     }
-                    DefStatementSite::ImplBlock { path, .. } => {
+                    Forward::ImplBlock { path, .. } => {
                         let fn_name = if let Some(segment) = fn_path.path.segments.last() {
                             &segment.ident
                         } else {
@@ -134,8 +184,8 @@ impl DefStatement {
                 })
                 .expect("valid expression")
             }
-            Call::Method(method_call) => match self.site.content {
-                DefStatementSite::ImplBlock { path, .. } | DefStatementSite::Direct { path } => {
+            Call::Method(method_call) => match self {
+                Forward::ImplBlock { path, .. } | Forward::Direct { path } => {
                     let rendered_call = render(create_empty_call(path, &method_call.method).into());
 
                     parse2(quote_spanned! { span=>
@@ -149,11 +199,11 @@ impl DefStatement {
                     })
                     .expect("valid expression")
                 }
-                DefStatementSite::Replace { .. } => {
+                Forward::Replace { ref to, .. } => {
                     emit_error!(
                         call.span(),
-                        "a replacement `def(...)` statement is not supported for method calls";
-                        help = self.span() => "replace it with a direct location",
+                        "a replacement `forward` attribute is not supported for method calls";
+                        help = self.span() => "replace it with a direct location, such as {}", quote! { #to },
                     );
 
                     original_call.into()
@@ -162,20 +212,20 @@ impl DefStatement {
         }
     }
 
-    /// Constructs a new path correctly using the new definition site.
+    /// Constructs a new path correctly using addressing the forwarded function.
     pub(super) fn construct_new_path(self, fn_path: &ExprPath) -> ExprPath {
         let mut resulting_path = fn_path.clone();
 
-        match self.site.content {
-            DefStatementSite::Direct { ref path } => {
+        match self {
+            Forward::Direct { ref path } => {
                 for (i, segment) in path.segments.iter().enumerate() {
                     resulting_path.path.segments.insert(i, segment.clone());
                 }
             }
-            DefStatementSite::ImplBlock { .. } => {
-                unreachable!("construct_new_path is never called for an impl def statement")
+            Forward::ImplBlock { .. } => {
+                unreachable!("`construct_new_path` is never called for an `impl` forward attribute")
             }
-            DefStatementSite::Replace { from, to, .. } => {
+            Forward::Replace { from, to, .. } => {
                 if !check_prefix(&from, &fn_path.path) {
                     return resulting_path;
                 }
@@ -230,78 +280,6 @@ fn create_empty_call(mut path: Path, fn_name: &impl std::fmt::Display) -> ExprCa
     }
 }
 
-/// Provides the definition in a `def(...)` statement.
-enum DefStatementSite {
-    /// The definition is found directly at the given path.
-    Direct {
-        /// The path where to find the definition.
-        path: Path,
-    },
-    /// The definition is found inside of an impl block.
-    ImplBlock {
-        /// The `impl` keyword that disambiguates this from a direct def statement.
-        impl_keyword: Token![impl],
-        /// The path to the impl block.
-        path: Path,
-    },
-    /// The definition is found by replacing `from` with `to` in the path.
-    Replace {
-        /// The path where the original function is found.
-        from: Path,
-        /// The arrow token that marks the replacement.
-        _arrow: Token![->],
-        /// The path where to function with the attached preconditions is found.
-        to: Path,
-    },
-}
-
-impl Parse for DefStatementSite {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let impl_keyword = if input.peek(Token![impl]) {
-            Some(input.parse()?)
-        } else {
-            None
-        };
-
-        let first_path = input.parse()?;
-
-        Ok(if input.is_empty() {
-            if let Some(impl_keyword) = impl_keyword {
-                DefStatementSite::ImplBlock {
-                    impl_keyword,
-                    path: first_path,
-                }
-            } else {
-                DefStatementSite::Direct { path: first_path }
-            }
-        } else {
-            let arrow = input.parse()?;
-            let second_path = input.parse()?;
-
-            DefStatementSite::Replace {
-                from: first_path,
-                _arrow: arrow,
-                to: second_path,
-            }
-        })
-    }
-}
-
-impl Spanned for DefStatementSite {
-    fn span(&self) -> Span {
-        match self {
-            DefStatementSite::Direct { path } => path.span(),
-            DefStatementSite::ImplBlock { impl_keyword, path } => impl_keyword
-                .span
-                .join(path.span())
-                .unwrap_or_else(|| path.span()),
-            DefStatementSite::Replace { from, to, .. } => {
-                from.span().join(to.span()).unwrap_or_else(|| to.span())
-            }
-        }
-    }
-}
-
 /// Checks if the path is a prefix and emits errors, if it isn't.
 fn check_prefix(possible_prefix: &Path, path: &Path) -> bool {
     if possible_prefix.segments.len() > path.segments.len() {
@@ -309,7 +287,7 @@ fn check_prefix(possible_prefix: &Path, path: &Path) -> bool {
             path,
             "cannot replace `{}` in this path",
             quote! { #possible_prefix };
-            help = possible_prefix.span()=> "try specifing a prefix of `{}` in `def(...)`",
+            help = possible_prefix.span()=> "try specifing a prefix of `{}` in the `forward` attribute",
             quote! { #path }
         );
         return false;
@@ -325,7 +303,7 @@ fn check_prefix(possible_prefix: &Path, path: &Path) -> bool {
                 note = path_segment.span()=> "`{}` != `{}`",
                 quote! { #prefix_segment },
                 quote! { #path_segment };
-                help = possible_prefix.span()=> "try specifing a prefix of `{}` in `def(...)`",
+                help = possible_prefix.span()=> "try specifing a prefix of `{}` in the `forward` attribute",
                 quote! { #path }
             );
             return false;
