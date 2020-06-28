@@ -58,6 +58,22 @@ impl From<AssureAttr> for Precondition {
     }
 }
 
+impl Spanned for AssureAttr {
+    fn span(&self) -> Span {
+        match self {
+            AssureAttr::WithReason {
+                precondition,
+                reason,
+                ..
+            } => precondition
+                .span()
+                .join(reason.reason.span())
+                .unwrap_or_else(|| precondition.span()),
+            AssureAttr::WithoutReason { precondition, .. } => precondition.span(),
+        }
+    }
+}
+
 impl Parse for AssureAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let precondition = input.parse()?;

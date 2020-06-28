@@ -9,7 +9,7 @@ use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
     token::Paren,
-    Attribute,
+    Attribute, Expr,
 };
 
 lazy_static! {
@@ -97,4 +97,25 @@ impl<T: Parse> Parse for Parenthesized<T> {
             content,
         })
     }
+}
+
+/// Returns the attributes of the given expression.
+pub(crate) fn attributes_of_expression(expr: &mut Expr) -> Option<&mut Vec<Attribute>> {
+    macro_rules! extract_attributes_from {
+        ($expr:expr => $($variant:ident),*) => {
+            match $expr {
+                $(
+                Expr::$variant(e) => Some(&mut e.attrs),
+                )*
+                _ => None,
+            }
+        }
+    }
+
+    extract_attributes_from!(expr =>
+        Array, Assign, AssignOp, Async, Await, Binary, Block, Box, Break, Call, Cast,
+        Closure, Continue, Field, ForLoop, Group, If, Index, Let, Lit, Loop, Macro, Match,
+        MethodCall, Paren, Path, Range, Reference, Repeat, Return, Struct, Try, TryBlock, Tuple,
+        Type, Unary, Unsafe, While, Yield
+    )
 }
