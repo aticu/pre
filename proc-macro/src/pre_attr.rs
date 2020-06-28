@@ -85,7 +85,7 @@ impl PreAttrVisitor {
         let attr_span = visit_matching_attrs_parsed(
             &mut function.attrs,
             |attr| is_attr("pre", attr),
-            |parsed_attr: Parenthesized<PreAttr>| match parsed_attr.content {
+            |parsed_attr: Parenthesized<PreAttr>, _span| match parsed_attr.content {
                 PreAttr::Empty => (),
                 PreAttr::Precondition(precondition) => preconditions.push(precondition),
             },
@@ -165,9 +165,9 @@ impl VisitMut for PreAttrVisitor {
                     emit_warning!(forward.span(), "this is ignored for non-call expressions");
                 }
 
-                for precondition in attrs.preconditions {
+                for assure_attribute in attrs.assure_attributes {
                     emit_warning!(
-                        precondition.span(),
+                        assure_attribute.span(),
                         "this is ignored for non-call expressions"
                     );
                 }

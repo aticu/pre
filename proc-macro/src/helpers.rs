@@ -50,9 +50,9 @@ pub(crate) fn is_attr(attr_to_check: &str, attr: &Attribute) -> bool {
 pub(crate) fn visit_matching_attrs_parsed<ParsedAttr: Parse>(
     attributes: &mut Vec<Attribute>,
     mut filter: impl FnMut(&mut Attribute) -> bool,
-    mut visit: impl FnMut(ParsedAttr),
+    mut visit: impl FnMut(ParsedAttr, Span),
 ) -> Option<Span> {
-    let mut attr_span: Option<Span> = None;
+    let mut span_of_all: Option<Span> = None;
     let mut i = 0;
 
     // TODO: use `drain_filter` once it's stabilized (see
@@ -60,14 +60,15 @@ pub(crate) fn visit_matching_attrs_parsed<ParsedAttr: Parse>(
     while i < attributes.len() {
         if filter(&mut attributes[i]) {
             let attr = attributes.remove(i);
+            let span = attr.span();
 
-            attr_span = Some(match attr_span.take() {
-                Some(old_span) => old_span.join(attr.span()).unwrap_or_else(|| attr.span()),
-                None => attr.span(),
+            span_of_all = Some(match span_of_all.take() {
+                Some(old_span) => old_span.join(span).unwrap_or_else(|| span),
+                None => span,
             });
 
             match syn::parse2::<ParsedAttr>(attr.tokens) {
-                Ok(parsed_attr) => visit(parsed_attr),
+                Ok(parsed_attr) => visit(parsed_attr, span),
                 Err(err) => emit_error!(err),
             }
         } else {
@@ -75,7 +76,7 @@ pub(crate) fn visit_matching_attrs_parsed<ParsedAttr: Parse>(
         }
     }
 
-    attr_span
+    span_of_all
 }
 
 /// A parsable thing surrounded by parentheses.
