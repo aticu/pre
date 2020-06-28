@@ -3,9 +3,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::convert::TryFrom;
-use syn::{
-    punctuated::Punctuated, token::Comma, Attribute, Expr, ExprCall, ExprMethodCall, ExprPath,
-};
+use syn::{punctuated::Punctuated, token::Comma, Expr, ExprCall, ExprMethodCall, ExprPath};
 
 /// A call expression.
 #[derive(Clone)]
@@ -17,14 +15,6 @@ pub(crate) enum Call {
 }
 
 impl Call {
-    /// Grants mutable access to the attributes of the call.
-    pub(crate) fn attrs_mut(&mut self) -> &mut Vec<Attribute> {
-        match self {
-            Call::Function(call) => &mut call.attrs,
-            Call::Method(call) => &mut call.attrs,
-        }
-    }
-
     /// Grants mutable access to the arguments of the call.
     pub(crate) fn args_mut(&mut self) -> &mut Punctuated<Expr, Comma> {
         match self {

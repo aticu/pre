@@ -13,9 +13,8 @@ use syn::{
 };
 
 use crate::{
-    call::Call,
     call_handling::{remove_call_attributes, render_call},
-    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized},
+    helpers::{attributes_of_expression, is_attr, visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_pre,
 };
@@ -147,12 +146,44 @@ impl VisitMut for PreAttrVisitor {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         visit_expr_mut(self, expr);
 
-        let call: Result<Call, _> = expr.clone().try_into();
+        let attrs = if let Some(attrs) = attributes_of_expression(expr) {
+            attrs
+        } else {
+            return;
+        };
 
-        if let Ok(mut call) = call {
-            if let Some(attrs) = remove_call_attributes(call.attrs_mut()) {
+        if let Some(attrs) = remove_call_attributes(attrs) {
+            if let Some(expr) = extract_call_expr(expr) {
+                let call = expr
+                    .clone()
+                    .try_into()
+                    .expect("`extract_call_expr` should only return call expressions");
+
                 mem::swap(&mut render_call(attrs, call), expr);
+            } else {
+                if let Some(forward) = attrs.forward {
+                    emit_warning!(forward.span(), "this is ignored for non-call expressions");
+                }
+
+                for precondition in attrs.preconditions {
+                    emit_warning!(
+                        precondition.span(),
+                        "this is ignored for non-call expressions"
+                    );
+                }
             }
         }
+    }
+}
+
+/// Extracts an expression that is a valid call from the given expression.
+///
+/// This may descend into nested expressions, if it would be obvious which nested expression is
+/// meant.
+fn extract_call_expr(expr: &mut Expr) -> Option<&mut Expr> {
+    match expr {
+        Expr::Call(_) => Some(expr),
+        Expr::MethodCall(_) => Some(expr),
+        _ => None,
     }
 }
