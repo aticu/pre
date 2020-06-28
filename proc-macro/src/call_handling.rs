@@ -35,6 +35,11 @@ pub(crate) enum AssureAttr {
         _comma: Token![,],
         /// The reason that was stated.
         reason: Reason,
+        /// The span best representing the whole attribute.
+        ///
+        /// This is only optional, because it cannot be determined while parsing.
+        /// It is filled immediately after parsing.
+        span: Option<Span>,
     },
     /// The statement written without a reason.
     ///
@@ -46,6 +51,11 @@ pub(crate) enum AssureAttr {
         precondition: Precondition,
         /// The span where to place the missing reason.
         missing_reason_span: Span,
+        /// The span best representing the whole attribute.
+        ///
+        /// This is only optional, because it cannot be determined while parsing.
+        /// It is filled immediately after parsing.
+        span: Option<Span>,
     },
 }
 
@@ -64,12 +74,17 @@ impl Spanned for AssureAttr {
             AssureAttr::WithReason {
                 precondition,
                 reason,
+                span,
                 ..
-            } => precondition
-                .span()
-                .join(reason.reason.span())
-                .unwrap_or_else(|| precondition.span()),
-            AssureAttr::WithoutReason { precondition, .. } => precondition.span(),
+            } => span.unwrap_or_else(|| {
+                precondition
+                    .span()
+                    .join(reason.reason.span())
+                    .unwrap_or_else(|| precondition.span())
+            }),
+            AssureAttr::WithoutReason {
+                precondition, span, ..
+            } => span.unwrap_or_else(|| precondition.span()),
         }
     }
 }
@@ -82,6 +97,7 @@ impl Parse for AssureAttr {
             Ok(AssureAttr::WithoutReason {
                 precondition,
                 missing_reason_span: input.span(),
+                span: None,
             })
         } else {
             let comma = input.parse()?;
@@ -91,7 +107,19 @@ impl Parse for AssureAttr {
                 precondition,
                 _comma: comma,
                 reason,
+                span: None,
             })
+        }
+    }
+}
+
+impl AssureAttr {
+    /// Sets the span of this `assure` attribute.
+    fn set_span(&mut self, new_span: Span) {
+        match self {
+            AssureAttr::WithReason { span, .. } | AssureAttr::WithoutReason { span, .. } => {
+                span.replace(new_span);
+            }
         }
     }
 }
@@ -130,27 +158,35 @@ pub(crate) struct CallAttributes {
     /// The optional `forward` attribute.
     pub(crate) forward: Option<Forward>,
     /// The list of `assure` attributes.
-    pub(crate) preconditions: Vec<AssureAttr>,
+    pub(crate) assure_attributes: Vec<AssureAttr>,
 }
 
 /// Removes and returns all `pre`-related call-site attributes from the given attribute list.
 pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<CallAttributes> {
     let mut forward = None;
-    let mut preconditions = Vec::new();
+    let mut assure_attributes = Vec::new();
 
     let preconditions_span = visit_matching_attrs_parsed(
         attributes,
         |attr| is_attr("assure", attr),
         |Parenthesized {
-             content: precondition,
+             content: mut assure_attribute,
              ..
-         }| preconditions.push(precondition),
+         }: Parenthesized<AssureAttr>,
+         span| {
+            assure_attribute.set_span(span);
+
+            assure_attributes.push(assure_attribute);
+        },
     );
     let forward_span = visit_matching_attrs_parsed(
         attributes,
         |attr| is_attr("forward", attr),
-        |Parenthesized { content: fwd, .. }: Parenthesized<Forward>| {
-            let span = fwd.span();
+        |Parenthesized {
+             content: mut fwd, ..
+         }: Parenthesized<Forward>,
+         span| {
+            fwd.set_span(span);
 
             if let Some(old_forward) = forward.replace(fwd) {
                 emit_error!(
@@ -177,7 +213,7 @@ pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<
         Some(CallAttributes {
             span,
             forward,
-            preconditions,
+            assure_attributes,
         })
     } else {
         None
@@ -189,11 +225,11 @@ pub(crate) fn render_call(
     CallAttributes {
         span,
         forward,
-        preconditions,
+        assure_attributes,
     }: CallAttributes,
     original_call: Call,
 ) -> Expr {
-    let preconditions = check_reasons(preconditions);
+    let preconditions = check_reasons(assure_attributes);
 
     if let Some(forward) = forward {
         forward.update_call(original_call, |call| {
@@ -209,9 +245,9 @@ pub(crate) fn render_call(
 /// Checks that all reasons exist and make sense.
 ///
 /// This function emits errors, if appropriate.
-fn check_reasons(preconditions: Vec<AssureAttr>) -> Vec<Precondition> {
-    for precondition in preconditions.iter() {
-        match precondition {
+fn check_reasons(assure_attributes: Vec<AssureAttr>) -> Vec<Precondition> {
+    for assure_attribute in assure_attributes.iter() {
+        match assure_attribute {
             AssureAttr::WithReason { reason, .. } => {
                 if let Some(reason) = unfinished_reason(&reason.reason) {
                     emit_warning!(
@@ -233,7 +269,7 @@ fn check_reasons(preconditions: Vec<AssureAttr>) -> Vec<Precondition> {
         }
     }
 
-    preconditions
+    assure_attributes
         .into_iter()
         .map(|holds_statement| holds_statement.into())
         .collect()
