@@ -14,7 +14,7 @@ use syn::{
 
 use crate::{
     call::Call,
-    call_handling::process_call,
+    call_handling::{remove_call_attributes, render_call},
     helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_pre,
@@ -149,9 +149,9 @@ impl VisitMut for PreAttrVisitor {
 
         let call: Result<Call, _> = expr.clone().try_into();
 
-        if let Ok(call) = call {
-            if let Some(mut new_expr) = process_call(call) {
-                mem::swap(&mut new_expr, expr)
+        if let Ok(mut call) = call {
+            if let Some(attrs) = remove_call_attributes(call.attrs_mut()) {
+                mem::swap(&mut render_call(attrs, call), expr);
             }
         }
     }
