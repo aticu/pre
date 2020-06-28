@@ -5,7 +5,7 @@ use proc_macro_error::{emit_error, emit_warning};
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    Expr, LitStr, Token,
+    Attribute, Expr, LitStr, Token,
 };
 
 use self::forward::Forward;
@@ -26,7 +26,7 @@ mod custom_keywords {
 }
 
 /// An attribute with an assurance that a precondition holds.
-enum AssureAttr {
+pub(crate) enum AssureAttr {
     /// The statement had a reason attached to it.
     WithReason {
         /// The precondition that was stated.
@@ -81,7 +81,7 @@ impl Parse for AssureAttr {
 }
 
 /// The reason why a precondition holds.
-struct Reason {
+pub(crate) struct Reason {
     /// The `reason` keyword.
     _reason_keyword: custom_keywords::reason,
     /// The `=` separating the `reason` keyword and the reason.
@@ -107,21 +107,31 @@ impl Parse for Reason {
 /// The reason to display in the hint where to add the reason.
 const HINT_REASON: &str = "why does this hold?";
 
-/// Renders the call, if necessary.
-pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
+/// The attributes of a call expression.
+pub(crate) struct CallAttributes {
+    /// The span best representing all the attributes.
+    pub(crate) span: Span,
+    /// The optional `forward` attribute.
+    pub(crate) forward: Option<Forward>,
+    /// The list of `assure` attributes.
+    pub(crate) preconditions: Vec<AssureAttr>,
+}
+
+/// Removes and returns all `pre`-related call-site attributes from the given attribute list.
+pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<CallAttributes> {
     let mut forward = None;
     let mut preconditions = Vec::new();
 
-    let attr_span = visit_matching_attrs_parsed(
-        call.attrs_mut(),
+    let preconditions_span = visit_matching_attrs_parsed(
+        attributes,
         |attr| is_attr("assure", attr),
         |Parenthesized {
              content: precondition,
              ..
          }| preconditions.push(precondition),
     );
-    let _ = visit_matching_attrs_parsed(
-        call.attrs_mut(),
+    let forward_span = visit_matching_attrs_parsed(
+        attributes,
         |attr| is_attr("forward", attr),
         |Parenthesized { content: fwd, .. }: Parenthesized<Forward>| {
             let span = fwd.span();
@@ -136,28 +146,45 @@ pub(crate) fn process_call(mut call: Call) -> Option<Expr> {
         },
     );
 
-    if let Some(attr_span) = attr_span {
-        Some(render_call(preconditions, forward, attr_span, call))
+    let span = match (preconditions_span, forward_span) {
+        (Some(preconditions_span), Some(forward_span)) => Some(
+            preconditions_span
+                .join(forward_span)
+                .unwrap_or_else(|| preconditions_span),
+        ),
+        (Some(span), None) => Some(span),
+        (None, Some(span)) => Some(span),
+        (None, None) => None,
+    };
+
+    if let Some(span) = span {
+        Some(CallAttributes {
+            span,
+            forward,
+            preconditions,
+        })
     } else {
         None
     }
 }
 
-/// Process a found `assure` attribute.
-fn render_call(
-    preconditions: Vec<AssureAttr>,
-    forward: Option<Forward>,
-    attr_span: Span,
+/// Renders the call using the found attributes for it.
+pub(crate) fn render_call(
+    CallAttributes {
+        span,
+        forward,
+        preconditions,
+    }: CallAttributes,
     original_call: Call,
 ) -> Expr {
     let preconditions = check_reasons(preconditions);
 
     if let Some(forward) = forward {
         forward.update_call(original_call, |call| {
-            render_assure(preconditions, call, attr_span)
+            render_assure(preconditions, call, span)
         })
     } else {
-        let output = render_assure(preconditions, original_call, attr_span);
+        let output = render_assure(preconditions, original_call, span);
 
         output.into()
     }
