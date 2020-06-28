@@ -81,19 +81,9 @@ pub(crate) fn visit_matching_attrs_parsed<ParsedAttr: Parse>(
 /// A parsable thing surrounded by parentheses.
 pub(crate) struct Parenthesized<T> {
     /// The parentheses surrounding the object.
-    pub(crate) parentheses: Paren,
+    _parentheses: Paren,
     /// The content that was surrounded by the parentheses.
     pub(crate) content: T,
-}
-
-impl<T: Parse> Parenthesized<T> {
-    /// Parses the content, if the parentheses were already parsed.
-    pub(crate) fn with_parentheses(parentheses: Paren, input: ParseStream) -> syn::Result<Self> {
-        Ok(Parenthesized {
-            parentheses,
-            content: input.parse()?,
-        })
-    }
 }
 
 impl<T: Parse> Parse for Parenthesized<T> {
@@ -103,7 +93,7 @@ impl<T: Parse> Parse for Parenthesized<T> {
         let content = content.parse()?;
 
         Ok(Parenthesized {
-            parentheses,
+            _parentheses: parentheses,
             content,
         })
     }
