@@ -12,6 +12,9 @@ use syn::{
     Attribute, Expr,
 };
 
+/// The reason to display in examples on how to use reasons.
+pub(crate) const HINT_REASON: &str = "<specify the reason why you can assure this here>";
+
 lazy_static! {
     /// Returns the name of the main `pre` crate.
     pub(crate) static ref CRATE_NAME: String = {

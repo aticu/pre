@@ -12,6 +12,7 @@ use crate::pre_attr::PreAttrVisitor;
 
 mod call;
 mod call_handling;
+mod documentation;
 mod helpers;
 mod pre_attr;
 mod pre_defs_for;

@@ -11,7 +11,7 @@ use syn::{
 use self::forward::Forward;
 use crate::{
     call::Call,
-    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized},
+    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized, HINT_REASON},
     precondition::Precondition,
     render_assure,
 };
@@ -147,9 +147,6 @@ impl Parse for Reason {
         })
     }
 }
-
-/// The reason to display in the hint where to add the reason.
-const HINT_REASON: &str = "why does this hold?";
 
 /// The attributes of a call expression.
 pub(crate) struct CallAttributes {

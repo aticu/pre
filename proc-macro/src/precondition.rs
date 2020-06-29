@@ -171,6 +171,20 @@ pub(crate) enum ReadWrite {
     },
 }
 
+impl ReadWrite {
+    /// Generates a short description suitable for usage in generated documentation.
+    ///
+    /// The generated description should finish the sentence
+    /// "The pointer must be valid for...".
+    pub(crate) fn doc_description(&self) -> &str {
+        match self {
+            ReadWrite::Read { .. } => "reads",
+            ReadWrite::Write { .. } => "writes",
+            ReadWrite::Both { .. } => "reads and writes",
+        }
+    }
+}
+
 impl fmt::Display for ReadWrite {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

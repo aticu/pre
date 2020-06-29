@@ -1,6 +1,6 @@
 error: you need to specify a reason why this precondition holds
 
-  = help: add `, reason = "why does this hold?"`
+  = help: add `, reason = "<specify the reason why you can assure this here>"`
 
  --> $DIR/missing_reason.rs:8:14
   |

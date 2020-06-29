@@ -18,6 +18,7 @@ use syn::{
 use self::expr_handling::render_expr;
 use crate::{
     call_handling::remove_call_attributes,
+    documentation::generate_docs,
     helpers::{attributes_of_expression, is_attr, visit_matching_attrs_parsed, Parenthesized},
     precondition::Precondition,
     render_pre,
@@ -156,6 +157,8 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
     );
 
     if !preconditions.is_empty() {
+        function.attrs.push(generate_docs(function, &preconditions));
+
         render_pre(
             preconditions,
             function,
