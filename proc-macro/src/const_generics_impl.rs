@@ -102,6 +102,7 @@ pub(crate) fn render_pre(
 
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
+            #[cfg(not(doc))]
             _: ::core::marker::PhantomData<(#preconditions)>
         })
         .expect("parses as a function argument"),

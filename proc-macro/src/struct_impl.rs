@@ -130,6 +130,7 @@ pub(crate) fn render_pre(
     let struct_def = quote_spanned! { span=>
         #[allow(non_camel_case_types)]
         #[allow(non_snake_case)]
+        #[cfg(not(doc))]
         #vis struct #function_name {
             #preconditions_rendered
         }
@@ -137,6 +138,7 @@ pub(crate) fn render_pre(
 
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
+            #[cfg(not(doc))]
             _: #function_name
         })
         .expect("parses as valid function argument"),
