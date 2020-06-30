@@ -136,10 +136,9 @@ impl ImplBlock {
         };
 
         for function in &self.items {
-            let name = format!("{}__{}__stub__", ty.ident, function.sig.ident);
-            let name = Ident::new(&name, function.span());
             tokens.append_all(&function.attrs);
 
+            let name = impl_block_stub_name(ty, &function.sig.ident, function.span());
             tokens.append_all(quote_spanned! { function.sig.span()=>
                 #[inline(always)]
                 #[allow(non_snake_case)]
@@ -147,4 +146,20 @@ impl ImplBlock {
             });
         }
     }
+}
+
+/// Generates a name to use for an impl block stub function.
+pub(crate) fn impl_block_stub_name(
+    ty: &PathSegment,
+    fn_name: &impl std::fmt::Display,
+    span: Span,
+) -> Ident {
+    // Ideally this would start with `_` to reduce the chance for naming collisions with actual
+    // functions. However this would silence any `dead_code` warnings, which the user may want to
+    // be aware of. Instead this ends with `__` to reduce the chance for naming collisions.
+    //
+    // Note that hygiene would not help in reducing naming collisions, because the function needs
+    // to be callable from an `assure` attribute that could possibly reside in a different hygenic
+    // context.
+    Ident::new(&format!("{}__impl__{}__", ty.ident, fn_name), span)
 }
