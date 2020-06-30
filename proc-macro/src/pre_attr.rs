@@ -26,10 +26,19 @@ use crate::{
 
 mod expr_handling;
 
+/// The custom keywords used for `pre` attributes.
+mod custom_keywords {
+    use syn::custom_keyword;
+
+    custom_keyword!(no_doc);
+}
+
 /// A `pre` attribute.
 pub(crate) enum PreAttr {
     /// An empty attribute to trigger checking for contained attributes.
     Empty,
+    /// A request not to generate `pre`-related documentation for the contained item.
+    NoDoc(custom_keywords::no_doc),
     /// A precondition that needs to hold for the contained item.
     Precondition(Precondition),
 }
@@ -38,6 +47,8 @@ impl Parse for PreAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.is_empty() {
             Ok(PreAttr::Empty)
+        } else if input.peek(custom_keywords::no_doc) {
+            Ok(PreAttr::NoDoc(input.parse()?))
         } else {
             Ok(PreAttr::Precondition(input.parse()?))
         }
@@ -78,32 +89,29 @@ impl PreAttrVisitor {
 
 impl VisitMut for PreAttrVisitor {
     fn visit_file_mut(&mut self, file: &mut File) {
-        if file.items.len() == 1 {
-            let new_item = match &mut file.items[0] {
-                Item::Fn(function) => {
-                    let original_attr = self.original_attr.take();
+        let original_attr = self.original_attr.take();
 
-                    visit_item_fn_mut(self, function);
-                    render_function(function, original_attr)
-                }
-                other_item => {
-                    visit_item_mut(self, other_item);
+        if let [Item::Fn(function)] = &mut file.items[..] {
+            // Use `visit_item_fn_mut ` here, so that the function remains an `ItemFn` that can be
+            // passed to `render_function`. Using `visit_item_mut` here would result in an
+            // `Item::Verbatim` instead.
+            visit_item_fn_mut(self, function);
 
-                    quote! { #other_item }
-                }
-            };
-
-            file.items[0] = Item::Verbatim(new_item);
+            file.items[0] = Item::Verbatim(render_function(function, original_attr));
         } else {
-            match self.original_attr.take() {
-                Some(PreAttr::Empty) => (),
-                Some(PreAttr::Precondition(precondition)) => {
-                    emit_warning!(precondition.span(), "this does not do anything")
-                }
-                None => (),
-            }
-
             visit_file_mut(self, file);
+
+            if let Some(original_attr) = original_attr {
+                match original_attr {
+                    PreAttr::Empty => (),
+                    PreAttr::NoDoc(no_doc) => {
+                        emit_warning!(no_doc.span(), "this does not do anything here")
+                    }
+                    PreAttr::Precondition(precondition) => {
+                        emit_warning!(precondition.span(), "this does not do anything here")
+                    }
+                }
+            }
         }
     }
 
@@ -147,17 +155,22 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
         .into_iter()
         .collect();
 
+    let mut render_docs = true;
+
     let attr_span = visit_matching_attrs_parsed(
         &mut function.attrs,
         |attr| is_attr("pre", attr),
         |parsed_attr: Parenthesized<PreAttr>, _span| match parsed_attr.content {
             PreAttr::Empty => (),
+            PreAttr::NoDoc(_) => render_docs = false,
             PreAttr::Precondition(precondition) => preconditions.push(precondition),
         },
     );
 
     if !preconditions.is_empty() {
-        function.attrs.push(generate_docs(function, &preconditions));
+        if render_docs {
+            function.attrs.push(generate_docs(function, &preconditions));
+        }
 
         render_pre(
             preconditions,
