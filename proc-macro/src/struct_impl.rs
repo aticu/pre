@@ -41,7 +41,7 @@
 //!     _custom_some__val_20_3e_2042_2e0: (),
 //! }
 //!
-//! fn has_preconditions(some_val: f32, _: has_preconditions) -> f32 {
+//! fn has_preconditions(some_val: f32, #[cfg(not(doc))] _: has_preconditions) -> f32 {
 //!     assert!(some_val > 42.0);
 //!
 //!     some_val

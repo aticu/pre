@@ -30,6 +30,7 @@
 //! ```rust,ignore
 //! fn has_preconditions(
 //!     some_val: f32,
+//!     #[cfg(not(doc))]
 //!     _: ::core::marker::PhantomData<(::pre::CustomConditionHolds<"some_val > 42.0">,)>,
 //! ) -> f32 {
 //!     assert!(some_val > 42.0);
