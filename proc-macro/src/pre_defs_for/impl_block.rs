@@ -6,9 +6,16 @@ use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
+    parse2,
     spanned::Spanned,
     token::Brace,
     ForeignItemFn, Generics, Ident, Path, PathArguments, PathSegment, Token, Type,
+};
+
+use crate::{
+    documentation::generate_docs,
+    helpers::{is_attr, Parenthesized},
+    pre_attr::PreAttr,
 };
 
 /// An impl block in a `pre_defs_for` module.
@@ -16,13 +23,13 @@ pub(crate) struct ImplBlock {
     /// The impl keyword.
     impl_keyword: Token![impl],
     /// The generics for the impl block.
-    generics: Generics,
+    pub(crate) generics: Generics,
     /// The type which the impl block is for.
-    self_ty: Box<Type>,
+    pub(crate) self_ty: Box<Type>,
     /// The brace of the block.
     brace: Brace,
     /// The functions which the block applies to.
-    items: Vec<ForeignItemFn>,
+    pub(crate) items: Vec<ForeignItemFn>,
 }
 
 impl Parse for ImplBlock {
@@ -138,8 +145,41 @@ impl ImplBlock {
         for function in &self.items {
             tokens.append_all(&function.attrs);
 
+            let docs = {
+                let mut render_docs = true;
+                let mut preconditions = Vec::new();
+
+                for attr in &function.attrs {
+                    if is_attr("pre", attr) {
+                        match parse2(attr.tokens.clone()) {
+                            Ok(Parenthesized {
+                                content: PreAttr::NoDoc(_),
+                                ..
+                            }) => render_docs = false,
+                            Ok(Parenthesized {
+                                content: PreAttr::Precondition(precondition),
+                                ..
+                            }) => preconditions.push(precondition),
+                            _ => (),
+                        }
+                    }
+                }
+
+                if render_docs {
+                    Some(generate_docs(&function.sig, &preconditions, Some(self)))
+                } else {
+                    None
+                }
+            };
+
             let name = impl_block_stub_name(ty, &function.sig.ident, function.span());
             tokens.append_all(quote_spanned! { function.sig.span()=>
+                // The documentation for `impl` blocks is generated here instead of in the `pre`
+                // attribute, to allow access to information about the `impl` block.
+                // In order to prevent it from being generated twice, `pre(no_doc)` is applied
+                // here.
+                #docs
+                #[pre(no_doc)]
                 #[inline(always)]
                 #[allow(non_snake_case)]
                 #visibility fn #name() {}

@@ -169,7 +169,9 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
 
     if !preconditions.is_empty() {
         if render_docs {
-            function.attrs.push(generate_docs(function, &preconditions));
+            function
+                .attrs
+                .push(generate_docs(&function.sig, &preconditions, None));
         }
 
         render_pre(
