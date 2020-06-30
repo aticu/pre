@@ -48,10 +48,9 @@ use syn::{
     Visibility,
 };
 
-use self::impl_block::ImplBlock;
 use crate::helpers::CRATE_NAME;
 
-pub(crate) use impl_block::impl_block_stub_name;
+pub(crate) use impl_block::{impl_block_stub_name, ImplBlock};
 
 mod impl_block;
 
