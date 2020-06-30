@@ -51,6 +51,8 @@ use syn::{
 use self::impl_block::ImplBlock;
 use crate::helpers::CRATE_NAME;
 
+pub(crate) use impl_block::impl_block_stub_name;
+
 mod impl_block;
 
 /// The parsed version of the `pre_defs_for` attribute content.

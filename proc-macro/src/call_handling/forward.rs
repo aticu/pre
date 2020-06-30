@@ -45,10 +45,10 @@ use syn::{
     parse2,
     punctuated::Pair,
     spanned::Spanned,
-    Expr, ExprCall, ExprPath, Ident, Path, Token,
+    Expr, ExprCall, ExprPath, Path, Token,
 };
 
-use crate::call::Call;
+use crate::{call::Call, pre_defs_for::impl_block_stub_name};
 
 /// The content of a `forward` attribute.
 ///
@@ -294,10 +294,8 @@ impl Forward {
 /// Creates an empty call to the given function.
 fn create_empty_call(mut path: Path, fn_name: &impl std::fmt::Display) -> ExprCall {
     if let Some(segment_pair) = path.segments.pop() {
-        let val = segment_pair.into_value();
-        let name = format!("{}__{}__stub__", val.ident, fn_name);
-
-        path.segments.push(Ident::new(&name, path.span()).into());
+        path.segments
+            .push(impl_block_stub_name(segment_pair.value(), fn_name, path.span()).into());
     } else {
         abort!(path, "path must have at least one segment");
     }
