@@ -39,7 +39,6 @@
 use proc_macro2::Span;
 use proc_macro_error::{abort, emit_error};
 use quote::{quote, quote_spanned};
-use std::mem;
 use syn::{
     parse::{Parse, ParseStream},
     parse2,
@@ -174,10 +173,7 @@ impl Forward {
 
                 parse2(match self {
                     Forward::Direct { .. } | Forward::Replace { .. } => {
-                        mem::swap(
-                            &mut *fn_call.func,
-                            &mut Expr::Path(self.construct_new_path(&fn_path)),
-                        );
+                        *fn_call.func = Expr::Path(self.construct_new_path(&fn_path));
                         let call = render(call);
 
                         quote_spanned! { span=>
