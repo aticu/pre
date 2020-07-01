@@ -92,6 +92,9 @@
 /// attribute macros being applied to statements or expressions directly.
 pub use pre_proc_macro::pre;
 
+/// Assure that a precondition holds.
+pub use pre_proc_macro::assure;
+
 /// Provide preconditions for items in a different crate.
 pub use pre_proc_macro::pre_defs_for;
 

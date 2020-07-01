@@ -13,7 +13,7 @@ use syn::{
 };
 
 use crate::{
-    documentation::generate_docs,
+    documentation::{generate_docs, ImplBlockContext},
     helpers::{is_attr, Parenthesized},
     pre_attr::PreAttr,
 };
@@ -135,7 +135,13 @@ impl ImplBlock {
     }
 
     /// Generates the code for an impl block inside a `pre_defs_for` module.
-    pub(crate) fn render(&self, tokens: &mut TokenStream, _path: &Path, visibility: &TokenStream) {
+    pub(crate) fn render(
+        &self,
+        tokens: &mut TokenStream,
+        path: &Path,
+        visibility: &TokenStream,
+        top_level_module: &Ident,
+    ) {
         let ty = if let Some(ty) = self.ty() {
             ty
         } else {
@@ -166,7 +172,15 @@ impl ImplBlock {
                 }
 
                 if render_docs {
-                    Some(generate_docs(&function.sig, &preconditions, Some(self)))
+                    Some(generate_docs(
+                        &function.sig,
+                        &preconditions,
+                        Some(ImplBlockContext {
+                            impl_block: self,
+                            path,
+                            top_level_module,
+                        }),
+                    ))
                 } else {
                     None
                 }
