@@ -232,7 +232,8 @@ impl Module {
         let crate_name = Ident::new(&CRATE_NAME, Span::call_site());
         brace_content.append_all(quote! {
             #[allow(unused_imports)]
-            use #path::*;
+            #[doc(no_inline)]
+            #visibility use #path::*;
 
             #[allow(unused_imports)]
             use #crate_name::pre;
