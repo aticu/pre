@@ -1,9 +1,9 @@
-//! Provides handling of `pre_defs_for` attributes.
+//! Provides handling of `extern_crate` attributes.
 //!
 //! # What the generated code looks like
 //!
 //! ```rust,ignore
-//! #[pre::pre_defs_for(std)]
+//! #[pre::extern_crate(std)]
 //! mod pre_std {
 //!     mod ptr {
 //!         #[pre(valid_ptr(src, r))]
@@ -54,7 +54,7 @@ pub(crate) use impl_block::{impl_block_stub_name, ImplBlock};
 
 mod impl_block;
 
-/// The parsed version of the `pre_defs_for` attribute content.
+/// The parsed version of the `extern_crate` attribute content.
 pub(crate) struct Attr {
     /// The path of the crate/module to which function calls will be forwarded.
     path: Path,
@@ -62,7 +62,7 @@ pub(crate) struct Attr {
 
 impl fmt::Display for Attr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "#[pre_defs_for(")?;
+        write!(f, "#[extern_crate(")?;
 
         if self.path.leading_colon.is_some() {
             write!(f, "::")?;
@@ -84,7 +84,7 @@ impl Parse for Attr {
     }
 }
 
-/// A parsed `pre_defs_for` annotated module.
+/// A parsed `extern_crate` annotated module.
 pub(crate) struct Module {
     /// The attributes on the module.
     attrs: Vec<Attribute>,
@@ -168,7 +168,7 @@ impl Parse for Module {
 }
 
 impl Module {
-    /// Renders this `pre_defs_for` annotated module to its final result.
+    /// Renders this `extern_crate` annotated module to its final result.
     pub(crate) fn render(&self, attr: Attr) -> TokenStream {
         let mut tokens = TokenStream::new();
 
@@ -290,7 +290,7 @@ impl Module {
     }
 }
 
-/// Generates the code for a function inside a `pre_defs_for` module.
+/// Generates the code for a function inside a `extern_crate` module.
 fn render_function(
     function: &ForeignItemFn,
     tokens: &mut TokenStream,

@@ -96,7 +96,7 @@ pub use pre_proc_macro::pre;
 pub use pre_proc_macro::assure;
 
 /// Provide preconditions for items in a different crate.
-pub use pre_proc_macro::pre_defs_for;
+pub use pre_proc_macro::extern_crate;
 
 cfg_if::cfg_if! {
     if #[cfg(nightly)] {

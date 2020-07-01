@@ -1,4 +1,4 @@
-//! Handles impl blocks in `pre_defs_for` modules.
+//! Handles impl blocks in `extern_crate` modules.
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
@@ -18,7 +18,7 @@ use crate::{
     pre_attr::PreAttr,
 };
 
-/// An impl block in a `pre_defs_for` module.
+/// An impl block in a `extern_crate` module.
 pub(crate) struct ImplBlock {
     /// The impl keyword.
     impl_keyword: Token![impl],
@@ -134,7 +134,7 @@ impl ImplBlock {
         }
     }
 
-    /// Generates the code for an impl block inside a `pre_defs_for` module.
+    /// Generates the code for an impl block inside a `extern_crate` module.
     pub(crate) fn render(
         &self,
         tokens: &mut TokenStream,
