@@ -109,9 +109,9 @@ pub(crate) fn attributes_of_expression(expr: &mut Expr) -> Option<&mut Vec<Attri
         ($expr:expr => $($variant:ident),*) => {
             match $expr {
                 $(
-                Expr::$variant(e) => Some(&mut e.attrs),
+                    Expr::$variant(e) => Some(&mut e.attrs),
                 )*
-                _ => None,
+                    _ => None,
             }
         }
     }

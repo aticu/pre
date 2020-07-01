@@ -48,7 +48,7 @@ use syn::{
     Visibility,
 };
 
-use crate::helpers::CRATE_NAME;
+use crate::{documentation::generate_module_docs, helpers::CRATE_NAME};
 
 pub(crate) use impl_block::{impl_block_stub_name, ImplBlock};
 
@@ -109,6 +109,15 @@ pub(crate) struct Module {
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.original_token_stream())
+    }
+}
+
+impl Spanned for Module {
+    fn span(&self) -> Span {
+        self.visibility
+            .span()
+            .join(self.braces.span)
+            .unwrap_or_else(|| self.braces.span)
     }
 }
 
@@ -178,8 +187,6 @@ impl Module {
         visibility: Option<&TokenStream>,
         top_level_module: &Ident,
     ) {
-        tokens.append_all(&self.attrs);
-
         if visibility.is_some() {
             // Update the path only in recursive calls.
             path.segments.push(PathSegment {
@@ -187,6 +194,10 @@ impl Module {
                 arguments: PathArguments::None,
             });
         }
+
+        let docs = generate_module_docs(self, &path);
+        tokens.append_all(quote! { #docs });
+        tokens.append_all(&self.attrs);
 
         let visibility = if let Some(visibility) = visibility {
             // We're in a recursive call.

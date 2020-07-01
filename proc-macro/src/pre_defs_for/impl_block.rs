@@ -149,8 +149,6 @@ impl ImplBlock {
         };
 
         for function in &self.items {
-            tokens.append_all(&function.attrs);
-
             let docs = {
                 let mut render_docs = true;
                 let mut preconditions = Vec::new();
@@ -187,12 +185,13 @@ impl ImplBlock {
             };
 
             let name = impl_block_stub_name(ty, &function.sig.ident, function.span());
+            tokens.append_all(quote! { #docs });
+            tokens.append_all(&function.attrs);
             tokens.append_all(quote_spanned! { function.sig.span()=>
                 // The documentation for `impl` blocks is generated here instead of in the `pre`
                 // attribute, to allow access to information about the `impl` block.
                 // In order to prevent it from being generated twice, `pre(no_doc)` is applied
                 // here.
-                #docs
                 #[pre(no_doc)]
                 #[inline(always)]
                 #[allow(non_snake_case)]
