@@ -264,7 +264,7 @@ pub(crate) fn generate_module_docs(module: &Module, path: &Path) -> Attribute {
 
     doc!(
         docs,
-        "[`pre` definitions]({}) for items in the `{}` {}.",
+        "[`pre` definitions]({}) for the `{}` {}.",
         PRE_LINK,
         path_str,
         item_name
