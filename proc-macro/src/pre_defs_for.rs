@@ -163,7 +163,7 @@ impl Module {
     pub(crate) fn render(&self, attr: Attr) -> TokenStream {
         let mut tokens = TokenStream::new();
 
-        self.render_inner(attr.path, &mut tokens, None);
+        self.render_inner(attr.path, &mut tokens, None, &self.ident);
 
         tokens
     }
@@ -176,6 +176,7 @@ impl Module {
         mut path: Path,
         tokens: &mut TokenStream,
         visibility: Option<&TokenStream>,
+        top_level_module: &Ident,
     ) {
         tokens.append_all(&self.attrs);
 
@@ -227,7 +228,7 @@ impl Module {
         });
 
         for impl_block in &self.impl_blocks {
-            impl_block.render(&mut brace_content, &path, &visibility);
+            impl_block.render(&mut brace_content, &path, &visibility, top_level_module);
         }
 
         for import in &self.imports {
@@ -239,7 +240,12 @@ impl Module {
         }
 
         for module in &self.modules {
-            module.render_inner(path.clone(), &mut brace_content, Some(&visibility));
+            module.render_inner(
+                path.clone(),
+                &mut brace_content,
+                Some(&visibility),
+                top_level_module,
+            );
         }
 
         tokens.append_all(quote_spanned! { self.braces.span=> { #brace_content } });

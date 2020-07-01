@@ -4,7 +4,7 @@
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use proc_macro_error::proc_macro_error;
+use proc_macro_error::{abort_call_site, proc_macro_error};
 use quote::quote;
 use syn::{parse_macro_input, visit_mut::VisitMut, File};
 
@@ -51,6 +51,20 @@ pub fn pre(attr: TokenStream, file: TokenStream) -> TokenStream {
     });
 
     output.into()
+}
+
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn assure(_: TokenStream, _: TokenStream) -> TokenStream {
+    // This macro currently only has two purposes:
+    // - Exist as a place to put documentation for the actual `assure` attribute, which is
+    // implemented inside the `pre` attribute.
+    // - Emit an error with a more helpful message than "attribute not found", if the user uses
+    // `assure` in the wrong place.
+    abort_call_site!(
+        "this attribute by itself is currently non-functional";
+        help = "use it on an expression in an item wrapped by a `pre` attribute"
+    )
 }
 
 #[proc_macro_attribute]
