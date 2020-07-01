@@ -3,7 +3,6 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::quote;
-use std::mem;
 use syn::{
     parse::{Parse, ParseStream},
     parse2,
@@ -120,7 +119,7 @@ impl VisitMut for PreAttrVisitor {
 
         if let Item::Fn(function) = item {
             let rendered_function = render_function(function, None);
-            mem::swap(item, &mut Item::Verbatim(rendered_function));
+            *item = Item::Verbatim(rendered_function);
         }
     }
 

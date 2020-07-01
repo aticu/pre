@@ -1,7 +1,7 @@
 //! Handles rendering of expressions and descending into nested expressions.
 
 use proc_macro_error::emit_warning;
-use std::{convert::TryInto, mem};
+use std::convert::TryInto;
 use syn::{spanned::Spanned, Block, Expr, Local, Stmt};
 
 use crate::call_handling::{render_call, CallAttributes};
@@ -17,7 +17,7 @@ pub(crate) fn render_expr(expr: &mut Expr, attrs: CallAttributes) {
             .try_into()
             .expect("`extract_call_expr` should only return call expressions");
 
-        mem::swap(&mut render_call(attrs, call), expr);
+        *expr = render_call(attrs, call);
     } else {
         if let Some(forward) = attrs.forward {
             emit_warning!(forward.span(), "this is ignored for non-call expressions");
