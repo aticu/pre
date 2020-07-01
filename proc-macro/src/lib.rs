@@ -13,9 +13,9 @@ use crate::pre_attr::PreAttrVisitor;
 mod call;
 mod call_handling;
 mod documentation;
+mod extern_crate;
 mod helpers;
 mod pre_attr;
-mod pre_defs_for;
 mod precondition;
 
 cfg_if::cfg_if! {
@@ -69,9 +69,9 @@ pub fn assure(_: TokenStream, _: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn pre_defs_for(attr: TokenStream, module: TokenStream) -> TokenStream {
-    let attr = parse_macro_input!(attr as pre_defs_for::Attr);
-    let module = parse_macro_input!(module as pre_defs_for::Module);
+pub fn extern_crate(attr: TokenStream, module: TokenStream) -> TokenStream {
+    let attr = parse_macro_input!(attr as extern_crate::Attr);
+    let module = parse_macro_input!(module as extern_crate::Module);
 
     let output = module.render(attr);
 

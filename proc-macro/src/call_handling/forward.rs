@@ -48,7 +48,7 @@ use syn::{
     Expr, ExprCall, ExprPath, Path, Token,
 };
 
-use crate::{call::Call, pre_defs_for::impl_block_stub_name};
+use crate::{call::Call, extern_crate::impl_block_stub_name};
 
 /// The content of a `forward` attribute.
 ///
