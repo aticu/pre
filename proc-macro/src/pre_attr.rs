@@ -101,14 +101,12 @@ impl VisitMut for PreAttrVisitor {
             visit_file_mut(self, file);
 
             if let Some(original_attr) = original_attr {
-                match original_attr {
-                    PreAttr::Empty => (),
-                    PreAttr::NoDoc(no_doc) => {
-                        emit_warning!(no_doc.span(), "this does not do anything here")
-                    }
-                    PreAttr::Precondition(precondition) => {
-                        emit_warning!(precondition.span(), "this does not do anything here")
-                    }
+                if let Some(span) = match original_attr {
+                    PreAttr::Empty => None,
+                    PreAttr::NoDoc(no_doc) => Some(no_doc.span()),
+                    PreAttr::Precondition(precondition) => Some(precondition.span()),
+                } {
+                    emit_warning!(span, "this is ignored in this context")
                 }
             }
         }
