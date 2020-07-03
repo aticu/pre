@@ -69,6 +69,20 @@ pub fn assure(_: TokenStream, _: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 #[proc_macro_error]
+pub fn forward(_: TokenStream, _: TokenStream) -> TokenStream {
+    // This macro currently only has two purposes:
+    // - Exist as a place to put documentation for the actual `forward` attribute, which is
+    // implemented inside the `pre` attribute.
+    // - Emit an error with a more helpful message than "attribute not found", if the user uses
+    // `forward` in the wrong place.
+    abort_call_site!(
+        "this attribute by itself is currently non-functional";
+        help = "use it on an expression in an item wrapped by a `pre` attribute"
+    )
+}
+
+#[proc_macro_attribute]
+#[proc_macro_error]
 pub fn extern_crate(attr: TokenStream, module: TokenStream) -> TokenStream {
     let attr = parse_macro_input!(attr as extern_crate::Attr);
     let module = parse_macro_input!(module as extern_crate::Module);
