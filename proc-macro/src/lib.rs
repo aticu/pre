@@ -1,6 +1,11 @@
 //! This crate contains the implementation for attributes used in the `pre` crate.
 //!
 //! Refer to the documentation of the `pre` crate for more information.
+//!
+//! This crate is not designed to be used as a standalone crate and might not work, when used
+//! without the `pre` crate.
+
+#![forbid(unsafe_code)]
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
