@@ -144,6 +144,12 @@ impl VisitMut for PreAttrVisitor {
 
 /// Renders the given function and applies all `pre` attributes to it.
 fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenStream {
+    let first_attr_span = first_attr.as_ref().and_then(|attr| match attr {
+        PreAttr::Empty => None,
+        PreAttr::NoDoc(no_doc) => Some(no_doc.span()),
+        PreAttr::Precondition(precondition) => Some(precondition.span()),
+    });
+
     let mut preconditions: Vec<_> = first_attr
         .and_then(|attr| match attr {
             PreAttr::Precondition(precondition) => Some(precondition),
@@ -164,6 +170,15 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
         },
     );
 
+    let span = match (attr_span, first_attr_span) {
+        (Some(attr_span), Some(first_attr_span)) => {
+            attr_span.join(first_attr_span).unwrap_or_else(|| attr_span)
+        }
+        (Some(span), None) => span,
+        (None, Some(span)) => span,
+        (None, None) => Span::call_site(), // Should never be the case for non-empty preconditions
+    };
+
     if !preconditions.is_empty() {
         if render_docs {
             function
@@ -171,11 +186,7 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
                 .push(generate_docs(&function.sig, &preconditions, None));
         }
 
-        render_pre(
-            preconditions,
-            function,
-            attr_span.unwrap_or_else(Span::call_site),
-        )
+        render_pre(preconditions, function, span)
     } else {
         quote! { #function }
     }
