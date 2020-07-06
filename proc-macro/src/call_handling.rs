@@ -249,8 +249,21 @@ fn check_reasons(assure_attributes: Vec<AssureAttr>) -> Vec<Precondition> {
                 if let Some(reason) = unfinished_reason(&reason.reason) {
                     emit_warning!(
                         reason,
-                        "you should specify a more meaningful reason here";
-                        help = "specifying a meaningful reason here will help you and others understand why this is ok in the future"
+                        "you should specify a different here";
+                        help = "specifying a meaningful reason will help you and others understand why this is ok in the future"
+                    )
+                } else if reason.reason.value() == HINT_REASON {
+                    let todo_help_msg = if cfg!(nightly) {
+                        Some("using `TODO` here will emit a warning, reminding you to fix this later")
+                    } else {
+                        None
+                    };
+
+                    emit_error!(
+                        reason.reason,
+                        "you need to specify a different reason here";
+                        help = "specifying a meaningful reason will help you and others understand why this is ok in the future";
+                        help =? todo_help_msg
                     )
                 }
             }
@@ -278,7 +291,7 @@ fn unfinished_reason(reason: &LitStr) -> Option<&LitStr> {
 
     reason_val.make_ascii_lowercase();
     match &*reason_val {
-        HINT_REASON | "todo" | "?" | "" => Some(reason),
+        "todo" | "?" | "" => Some(reason),
         _ => None,
     }
 }
