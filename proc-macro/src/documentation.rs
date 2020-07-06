@@ -152,7 +152,7 @@ pub(crate) fn generate_docs(
     }
 
     if !preconditions.is_empty() {
-        doc!(docs, "# Preconditions");
+        doc!(docs, "# This function has preconditions");
         doc!(docs);
 
         if plural {
