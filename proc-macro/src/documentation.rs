@@ -5,7 +5,7 @@ use std::{env, fmt::Write};
 use syn::{
     spanned::Spanned,
     token::{Bracket, Pound},
-    AttrStyle, Attribute, Ident, Path, PathArguments, Signature,
+    AttrStyle, Attribute, Ident, LitStr, Path, PathArguments, Signature,
 };
 
 use crate::{
@@ -232,6 +232,7 @@ pub(crate) fn generate_docs(
         doc!(docs, "```");
     }
 
+    let docs = LitStr::new(&docs, span);
     Attribute {
         pound_token: Pound { spans: [span] },
         style: AttrStyle::Outer,
@@ -282,6 +283,7 @@ pub(crate) fn generate_module_docs(module: &Module, path: &Path) -> Attribute {
         path_str
     );
 
+    let docs = LitStr::new(&docs, span);
     Attribute {
         pound_token: Pound { spans: [span] },
         style: AttrStyle::Outer,
