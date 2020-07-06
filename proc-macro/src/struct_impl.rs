@@ -136,6 +136,15 @@ pub(crate) fn render_pre(
         }
     };
 
+    // Include the precondition site into the span of the function.
+    // This improves the error messages for the case where no preconditions are specified.
+    function.sig.fn_token.span = function
+        .sig
+        .fn_token
+        .span
+        .join(span)
+        .unwrap_or_else(|| span);
+
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
             #[cfg(not(doc))]
