@@ -2,7 +2,7 @@
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::{
     parse::{Parse, ParseStream},
     parse2,
@@ -30,6 +30,7 @@ mod custom_keywords {
     use syn::custom_keyword;
 
     custom_keyword!(no_doc);
+    custom_keyword!(no_debug_assert);
 }
 
 /// A `pre` attribute.
@@ -38,6 +39,8 @@ pub(crate) enum PreAttr {
     Empty,
     /// A request not to generate `pre`-related documentation for the contained item.
     NoDoc(custom_keywords::no_doc),
+    /// A request not to generate `debug_assert` statements for boolean expressions.
+    NoDebugAssert(custom_keywords::no_debug_assert),
     /// A precondition that needs to hold for the contained item.
     Precondition(Precondition),
 }
@@ -48,6 +51,8 @@ impl Parse for PreAttr {
             Ok(PreAttr::Empty)
         } else if input.peek(custom_keywords::no_doc) {
             Ok(PreAttr::NoDoc(input.parse()?))
+        } else if input.peek(custom_keywords::no_debug_assert) {
+            Ok(PreAttr::NoDebugAssert(input.parse()?))
         } else {
             Ok(PreAttr::Precondition(input.parse()?))
         }
@@ -104,6 +109,7 @@ impl VisitMut for PreAttrVisitor {
                 if let Some(span) = match original_attr {
                     PreAttr::Empty => None,
                     PreAttr::NoDoc(no_doc) => Some(no_doc.span()),
+                    PreAttr::NoDebugAssert(no_debug_assert) => Some(no_debug_assert.span()),
                     PreAttr::Precondition(precondition) => Some(precondition.span()),
                 } {
                     emit_warning!(span, "this is ignored in this context")
@@ -147,27 +153,30 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
     let first_attr_span = first_attr.as_ref().and_then(|attr| match attr {
         PreAttr::Empty => None,
         PreAttr::NoDoc(no_doc) => Some(no_doc.span()),
+        PreAttr::NoDebugAssert(no_debug_assert) => Some(no_debug_assert.span()),
         PreAttr::Precondition(precondition) => Some(precondition.span()),
     });
 
-    let mut preconditions: Vec<_> = first_attr
-        .and_then(|attr| match attr {
-            PreAttr::Precondition(precondition) => Some(precondition),
-            _ => None,
-        })
-        .into_iter()
-        .collect();
+    let mut preconditions = Vec::new();
 
     let mut render_docs = true;
+    let mut debug_assert = true;
+
+    let mut handle_attr = |attr| match attr {
+        PreAttr::Empty => (),
+        PreAttr::NoDoc(_) => render_docs = false,
+        PreAttr::NoDebugAssert(_) => debug_assert = false,
+        PreAttr::Precondition(precondition) => preconditions.push(precondition),
+    };
+
+    if let Some(first_attr) = first_attr {
+        handle_attr(first_attr);
+    }
 
     let attr_span = visit_matching_attrs_parsed(
         &mut function.attrs,
         |attr| is_attr("pre", attr),
-        |parsed_attr: Parenthesized<PreAttr>, _span| match parsed_attr.content {
-            PreAttr::Empty => (),
-            PreAttr::NoDoc(_) => render_docs = false,
-            PreAttr::Precondition(precondition) => preconditions.push(precondition),
-        },
+        |parsed_attr: Parenthesized<PreAttr>, _span| handle_attr(parsed_attr.content),
     );
 
     let span = match (attr_span, first_attr_span) {
@@ -184,6 +193,20 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
             function
                 .attrs
                 .push(generate_docs(&function.sig, &preconditions, None));
+        }
+
+        if debug_assert {
+            for condition in preconditions.iter() {
+                if let Precondition::Boolean(expr) = condition {
+                    function.block.stmts.insert(
+                        0,
+                        parse2(quote_spanned! { expr.span()=>
+                            debug_assert!(#expr);
+                        })
+                        .expect("valid statement"),
+                    );
+                }
+            }
         }
 
         render_pre(preconditions, function, span)

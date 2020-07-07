@@ -193,6 +193,10 @@ impl ImplBlock {
                 // In order to prevent it from being generated twice, `pre(no_doc)` is applied
                 // here.
                 #[pre(no_doc)]
+                // The debug assertions for the original method likely won't make sense here, since
+                // they probably depend on local parameters, which aren't present in this empty
+                // function. To prevent errors, we remove the debug assertions here.
+                #[pre(no_debug_assert)]
                 #[inline(always)]
                 #[allow(non_snake_case)]
                 #visibility fn #name() {}
