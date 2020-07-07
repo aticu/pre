@@ -75,13 +75,15 @@ pub(crate) fn generate_docs(
     let plural = preconditions.len() != 1;
 
     if let Some(ctx) = &impl_block_context {
-        let path_str = if let Some(ty) = &ctx.impl_block.ty() {
+        let (path_str, path_str_no_generics) = if let Some(ty) = &ctx.impl_block.ty() {
             let mut path_str = String::new();
             for segment in ctx.path.segments.iter() {
                 doc_inline!(path_str, "{}::", segment.ident);
             }
 
             doc_inline!(path_str, "{}", ty.ident);
+
+            let mut path_str_no_generics = path_str.clone();
 
             match &ty.arguments {
                 PathArguments::None => (),
@@ -94,30 +96,44 @@ pub(crate) fn generate_docs(
                 }
                 PathArguments::Parenthesized(_) => unreachable!(),
             }
-            doc_inline!(path_str, "::");
 
             let name = &function.ident;
-            doc_inline!(path_str, "{}", quote! { #name });
+            doc_inline!(path_str, "::{}", quote! { #name });
+            doc_inline!(path_str_no_generics, "::{}", quote! { #name });
 
-            path_str
+            (path_str, Some(path_str_no_generics))
         } else {
             let path = &ctx.path;
             let ty = &ctx.impl_block.self_ty;
             let name = &function.ident;
 
-            format!(
-                "{}::{}::{}",
-                quote! { #path },
-                quote! { #ty },
-                quote! { #name }
+            (
+                format!(
+                    "{}::{}::{}",
+                    quote! { #path },
+                    quote! { #ty },
+                    quote! { #name }
+                ),
+                None,
             )
         };
 
-        doc!(
-            docs,
-            "A stub for the preconditions of the `{}` function.",
-            path_str
-        );
+        // TODO: remove the nightly condition here, once rust paths are supported for documentation
+        // links on stable
+        match (cfg!(nightly), path_str_no_generics) {
+            (true, Some(no_generics)) => doc!(
+                docs,
+                "A stub for the preconditions of the [`{}`]({}) function.",
+                path_str,
+                no_generics
+            ),
+            _ => doc!(
+                docs,
+                "A stub for the preconditions of the `{}` function.",
+                path_str
+            ),
+        }
+
         doc!(docs);
 
         doc!(docs, "# What is this function?");
