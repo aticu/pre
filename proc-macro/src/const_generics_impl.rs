@@ -11,7 +11,7 @@
 //! # What the generated code looks like
 //!
 //! ```rust,ignore
-//! #[pre::pre("some_val > 42.0")]
+//! #[pre::pre(some_val > 42.0)]
 //! fn has_preconditions(some_val: f32) -> f32 {
 //!     assert!(some_val > 42.0);
 //!
@@ -20,7 +20,7 @@
 //!
 //! #[pre::pre]
 //! fn main() {
-//!     #[assure("some_val > 42.0", reason = "43.0 > 42.0")]
+//!     #[assure(some_val > 42.0, reason = "43.0 > 42.0")]
 //!     has_preconditions(43.0);
 //! }
 //! ```
@@ -28,11 +28,13 @@
 //! turns into
 //!
 //! ```rust,ignore
+//! #[doc = "..."]
 //! fn has_preconditions(
 //!     some_val: f32,
 //!     #[cfg(not(doc))]
-//!     _: ::core::marker::PhantomData<(::pre::CustomConditionHolds<"some_val > 42.0">,)>,
+//!     _: ::core::marker::PhantomData<(::pre::BooleanCondition<"some_val > 42.0">,)>,
 //! ) -> f32 {
+//!     debug_assert!(some_val > 42.0);
 //!     assert!(some_val > 42.0);
 //!
 //!     some_val
@@ -41,7 +43,7 @@
 //! fn main() {
 //!     has_preconditions(
 //!         43.0,
-//!         ::core::marker::PhantomData::<(::pre::CustomConditionHolds<"some_val > 42.0">,)>,
+//!         ::core::marker::PhantomData::<(::pre::BooleanCondition<"some_val > 42.0">,)>,
 //!     );
 //! }
 //! ```
