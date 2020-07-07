@@ -516,17 +516,17 @@ cfg_if::cfg_if! {
         // *WARNING* These types are not considered to be part of the public API and may change at
         // any time without notice.
 
-        /// A declaration that the pointer of name `PTR` is valid.
+        /// A condition that the pointer of name `PTR` is valid for `ACCESS_TYPE` accesses.
         #[doc(hidden)]
-        pub struct ValidPtrConditionHolds<const PTR: &'static str, const ACCESS_TYPE: &'static str>;
+        pub struct ValidPtrCondition<const PTR: &'static str, const ACCESS_TYPE: &'static str>;
 
-        /// A declaration that the given boolean condition holds.
+        /// A boolean condition.
         #[doc(hidden)]
-        pub struct BooleanConditionHolds<const CONDITION: &'static str>;
+        pub struct BooleanCondition<const CONDITION: &'static str>;
 
-        /// A declaration that a custom condition holds.
+        /// A custom condition.
         #[doc(hidden)]
-        pub struct CustomConditionHolds<const CONDITION: &'static str>;
+        pub struct CustomCondition<const CONDITION: &'static str>;
 
     }
 }

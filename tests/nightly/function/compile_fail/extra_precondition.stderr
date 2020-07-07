@@ -5,5 +5,5 @@ error[E0308]: mismatched types
 9 | |     #[assure("must be baz", reason = "is baz")]
   | |_______________________________________________^ expected a tuple with 1 element, found one with 2 elements
   |
-  = note: expected struct `std::marker::PhantomData<(pre::CustomConditionHolds<"must be bar">,)>`
-             found struct `std::marker::PhantomData<(pre::CustomConditionHolds<"must be bar">, pre::CustomConditionHolds<"must be baz">)>`
+  = note: expected struct `std::marker::PhantomData<(pre::CustomCondition<"must be bar">,)>`
+             found struct `std::marker::PhantomData<(pre::CustomCondition<"must be bar">, pre::CustomCondition<"must be baz">)>`
