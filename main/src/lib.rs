@@ -347,7 +347,7 @@ pub use pre_proc_macro::assure;
 /// mod new_std {
 ///     mod ptr {
 ///         impl<T> NonNull<T> {
-///             #[pre("`ptr` must be non-null")]
+///             #[pre(!ptr.is_null())]
 ///             const unsafe fn new_unchecked(ptr: *mut T) -> NonNull<T>;
 ///         }
 ///     }
@@ -365,12 +365,12 @@ pub use pre_proc_macro::assure;
 ///     // below. This is required, so that the preconditions can be properly checked for a
 ///     // function in an `impl` block inside of a `extern_crate` module.
 ///     #[forward(impl new_std::ptr::NonNull)]
-///     #[assure("`ptr` must be non-null", reason = "a reference is never null")]
+///     #[assure(!ptr.is_null(), reason = "a reference is never null")]
 ///     let non_null = unsafe { new_std::ptr::NonNull::new_unchecked(&mut val) };
 ///
 ///     // The same thing also works when using the `NonNull` through the `std::ptr` path.
 ///     #[forward(impl new_std::ptr::NonNull)]
-///     #[assure("`ptr` must be non-null", reason = "a reference is never null")]
+///     #[assure(!ptr.is_null(), reason = "a reference is never null")]
 ///     let non_null = unsafe { std::ptr::NonNull::new_unchecked(&mut val) };
 /// }
 /// ```

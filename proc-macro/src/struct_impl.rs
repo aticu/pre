@@ -18,7 +18,7 @@
 //! # What the generated code looks like
 //!
 //! ```rust,ignore
-//! #[pre::pre("some_val > 42.0")]
+//! #[pre::pre(some_val > 42.0)]
 //! fn has_preconditions(some_val: f32) -> f32 {
 //!     assert!(some_val > 42.0);
 //!
@@ -27,7 +27,7 @@
 //!
 //! #[pre::pre]
 //! fn main() {
-//!     #[assure("some_val > 42.0", reason = "43.0 > 42.0")]
+//!     #[assure(some_val > 42.0, reason = "43.0 > 42.0")]
 //!     has_preconditions(43.0);
 //! }
 //! ```
@@ -37,11 +37,14 @@
 //! ```rust,ignore
 //! #[allow(non_camel_case_types)]
 //! #[allow(non_snake_case)]
+//! #[cfg(not(doc))]
 //! struct has_preconditions {
-//!     _custom_some__val_20_3e_2042_2e0: (),
+//!     _boolean_some__val_20_3e_2042_2e0: (),
 //! }
 //!
+//! #[doc = "..."]
 //! fn has_preconditions(some_val: f32, #[cfg(not(doc))] _: has_preconditions) -> f32 {
+//!     debug_assert!(some_val > 42.0);
 //!     assert!(some_val > 42.0);
 //!
 //!     some_val
@@ -51,7 +54,7 @@
 //!     has_preconditions(
 //!         43.0,
 //!         has_preconditions {
-//!             _custom_some__val_20_3e_2042_2e0: (),
+//!             _boolean_some__val_20_3e_2042_2e0: (),
 //!         },
 //!     );
 //! }
