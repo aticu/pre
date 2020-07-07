@@ -93,6 +93,10 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
                 ReadWrite::Both { .. } => "rw",
             }
         ),
+        Precondition::Boolean(expr) => format_ident!(
+            "_boolean_{}",
+            escape_non_ident_chars(quote! { #expr }.to_string())
+        ),
         Precondition::Custom(string) => {
             format_ident!("_custom_{}", escape_non_ident_chars(string.value()))
         }

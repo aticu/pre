@@ -189,7 +189,6 @@ pub(crate) fn generate_docs(
 
         for precondition in preconditions {
             match precondition {
-                Precondition::Custom(text) => doc!(docs, "- {}", text.value()),
                 Precondition::ValidPtr {
                     ident, read_write, ..
                 } => doc!(
@@ -198,6 +197,8 @@ pub(crate) fn generate_docs(
                     ident.to_string(),
                     read_write.doc_description()
                 ),
+                Precondition::Boolean(expr) => doc!(docs, "- `{}`", quote! { #expr }),
+                Precondition::Custom(text) => doc!(docs, "- {}", text.value()),
             }
         }
 

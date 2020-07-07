@@ -1,13 +1,14 @@
 //! Defines the different kinds of preconditions.
 
 use proc_macro2::Span;
+use quote::quote;
 use std::{cmp::Ordering, fmt};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
     spanned::Spanned,
     token::Paren,
-    Ident, LitStr, Token,
+    Error, Expr, Ident, LitStr, Token,
 };
 
 /// The custom keywords used by the precondition kinds.
@@ -35,6 +36,8 @@ pub(crate) enum Precondition {
         /// Information on what accesses of the pointer must be valid.
         read_write: ReadWrite,
     },
+    /// An expression that should evaluate to a boolean value.
+    Boolean(Box<Expr>),
     /// A custom precondition that is spelled out in a string.
     Custom(LitStr),
 }
@@ -45,6 +48,7 @@ impl fmt::Display for Precondition {
             Precondition::ValidPtr {
                 ident, read_write, ..
             } => write!(f, "valid_ptr({}, {})", ident.to_string(), read_write),
+            Precondition::Boolean(expr) => write!(f, "{}", quote! { #expr }),
             Precondition::Custom(lit) => write!(f, "{:?}", lit.value()),
         }
     }
@@ -52,9 +56,9 @@ impl fmt::Display for Precondition {
 
 impl Parse for Precondition {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
+        let start_span = input.span();
 
-        if lookahead.peek(custom_keywords::valid_ptr) {
+        if input.peek(custom_keywords::valid_ptr) {
             let valid_ptr_keyword = input.parse()?;
             let content;
             let parentheses = parenthesized!(content in input);
@@ -73,10 +77,22 @@ impl Parse for Precondition {
             } else {
                 Err(content.error("unexpected token"))
             }
-        } else if lookahead.peek(LitStr) {
+        } else if input.peek(LitStr) {
             Ok(Precondition::Custom(input.parse()?))
         } else {
-            Err(lookahead.error())
+            let expr = input.parse();
+
+            match expr {
+                Ok(expr) => Ok(Precondition::Boolean(Box::new(expr))),
+                Err(mut err) => {
+                    err.combine(Error::new(
+                        start_span,
+                        "expected `valid_ptr`, a string literal or a boolean expression",
+                    ));
+
+                    Err(err)
+                }
+            }
         }
     }
 }
@@ -92,6 +108,7 @@ impl Spanned for Precondition {
                 .span()
                 .join(parentheses.span)
                 .unwrap_or_else(|| valid_ptr_keyword.span()),
+            Precondition::Boolean(expr) => expr.span(),
             Precondition::Custom(lit) => lit.span(),
         }
     }
@@ -102,7 +119,8 @@ impl Precondition {
     fn descriminant_id(&self) -> usize {
         match self {
             Precondition::ValidPtr { .. } => 0,
-            Precondition::Custom(_) => 1,
+            Precondition::Boolean(_) => 1,
+            Precondition::Custom(_) => 2,
         }
     }
 }
@@ -121,6 +139,11 @@ impl Ord for Precondition {
                     ident: ident_other, ..
                 },
             ) => ident_self.cmp(&ident_other),
+            (Precondition::Boolean(expr_self), Precondition::Boolean(expr_other)) => {
+                quote!(#expr_self)
+                    .to_string()
+                    .cmp(&quote!(#expr_other).to_string())
+            }
             (Precondition::Custom(lit_self), Precondition::Custom(lit_other)) => {
                 lit_self.value().cmp(&lit_other.value())
             }
@@ -281,17 +304,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_unknown_keyword() {
+    fn parse_wrong_expr() {
         {
             let result: Result<Precondition, _> = parse2(quote! {
-                unknown_keyword
+                a ++ b
             });
             assert!(result.is_err());
         }
 
         {
             let result: Result<Precondition, _> = parse2(quote! {
-                unknown_keyword("abc")
+                17 - + -- + []
             });
             assert!(result.is_err());
         }
