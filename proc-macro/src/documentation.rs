@@ -101,7 +101,16 @@ pub(crate) fn generate_docs(
 
             path_str
         } else {
-            format!("{}::{}::{}", quote! {}, quote! {}, quote! {})
+            let path = &ctx.path;
+            let ty = &ctx.impl_block.self_ty;
+            let name = &function.ident;
+
+            format!(
+                "{}::{}::{}",
+                quote! { #path },
+                quote! { #ty },
+                quote! { #name }
+            )
         };
 
         doc!(
