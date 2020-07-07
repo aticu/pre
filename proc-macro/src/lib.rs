@@ -49,7 +49,7 @@ pub fn pre(attr: TokenStream, file: TokenStream) -> TokenStream {
         #file
     };
 
-    // Reset the dummy here, in case errors were emitted in `render_pre`.
+    // Reset the dummy here, in case errors were emitted while generating the code.
     // This will use the most up-to-date version of the generated code.
     proc_macro_error::set_dummy(quote! {
         #output

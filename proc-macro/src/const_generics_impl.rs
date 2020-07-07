@@ -75,19 +75,19 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
                     ReadWrite::Both { .. } => LitStr::new("r+w", read_write.span()),
                 };
                 tokens.append_all(quote_spanned! { precondition.span()=>
-                    ::#crate_name::ValidPtrConditionHolds::<#ident_lit, #rw_str>
+                    ::#crate_name::ValidPtrCondition::<#ident_lit, #rw_str>
                 });
             }
             Precondition::Boolean(expr) => {
                 let as_str = LitStr::new(&quote! { #expr }.to_string(), precondition.span());
 
                 tokens.append_all(quote_spanned! { precondition.span()=>
-                    ::#crate_name::BooleanConditionHolds::<#as_str>
+                    ::#crate_name::BooleanCondition::<#as_str>
                 });
             }
             Precondition::Custom(string) => {
                 tokens.append_all(quote_spanned! { precondition.span()=>
-                    ::#crate_name::CustomConditionHolds::<#string>
+                    ::#crate_name::CustomCondition::<#string>
                 });
             }
         }
