@@ -78,6 +78,13 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
                     ::#crate_name::ValidPtrConditionHolds::<#ident_lit, #rw_str>
                 });
             }
+            Precondition::Boolean(expr) => {
+                let as_str = LitStr::new(&quote! { #expr }.to_string(), precondition.span());
+
+                tokens.append_all(quote_spanned! { precondition.span()=>
+                    ::#crate_name::BooleanConditionHolds::<#as_str>
+                });
+            }
             Precondition::Custom(string) => {
                 tokens.append_all(quote_spanned! { precondition.span()=>
                     ::#crate_name::CustomConditionHolds::<#string>
