@@ -1,0 +1,28 @@
+error: cannot replace `b` in this path
+  --> $DIR/forward_failed_replace.rs:22:5
+   |
+22 |     a::d::foo();
+   |     ^^^^^^^^^
+   |
+note: `b` != `a`
+  --> $DIR/forward_failed_replace.rs:22:5
+   |
+22 |     a::d::foo();
+   |     ^
+help: try specifing a prefix of `a :: d :: foo` in the `forward` attribute
+  --> $DIR/forward_failed_replace.rs:20:15
+   |
+20 |     #[forward(b -> c)]
+   |               ^
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/forward_failed_replace.rs:22:5
+   |
+5  |           pub(crate) fn foo() {}
+   |           ------------------- defined here
+...
+20 | /     #[forward(b -> c)]
+21 | |     #[assure("must be foo", reason = "is foo")]
+   | |_______________________________________________- supplied 1 argument
+22 |       a::d::foo();
+   |       ^^^^^^^^^ expected 0 arguments

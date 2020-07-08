@@ -1,0 +1,11 @@
+error: a replacement `forward` attribute is not supported for method calls
+  --> $DIR/method_replace_forward.rs:14:5
+   |
+14 |     X.foo();
+   |     ^^^^^^^
+   |
+help: try replacing it with a direct location, such as `bar`
+  --> $DIR/method_replace_forward.rs:13:15
+   |
+13 |     #[forward(foo -> bar)]
+   |               ^^^^^^^^^^
