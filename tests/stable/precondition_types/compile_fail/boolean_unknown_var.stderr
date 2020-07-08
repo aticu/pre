@@ -1,0 +1,5 @@
+error[E0425]: cannot find value `value` in this scope
+ --> $DIR/boolean_unknown_var.rs:3:7
+  |
+3 | #[pre(value > 0)]
+  |       ^^^^^ help: a local variable with a similar name exists: `valu`
