@@ -184,7 +184,7 @@ pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, sp
     } else {
         match &call {
             Call::Function(call) => emit_error!(
-                call,
+                call.func,
                 "unable to determine at compile time which function is being called";
                 help = "use a direct path to the function instead"
             ),
