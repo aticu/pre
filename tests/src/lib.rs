@@ -9,6 +9,9 @@ mod tests {
 
             $test_cases.pass(concat!($scenario, "/precondition_types/pass/*.rs"));
             $test_cases.compile_fail(concat!($scenario, "/precondition_types/compile_fail/*.rs"));
+
+            $test_cases.pass(concat!($scenario, "/misc/pass/*.rs"));
+            $test_cases.compile_fail(concat!($scenario, "/misc/compile_fail/*.rs"));
         }};
     }
 
@@ -18,6 +21,9 @@ mod tests {
         let test_cases = TestCases::new();
 
         add_testcases!(test_cases, "stable");
+
+        test_cases.pass("stable/stable-only/pass/*.rs");
+        test_cases.compile_fail("stable/stable-only/compile_fail/*.rs");
     }
 
     #[cfg(nightly)]

@@ -1,0 +1,11 @@
+error: preconditions are not supported for methods on the stable compiler
+ --> $DIR/method.rs:6:11
+  |
+6 |     #[pre("precondition on method")]
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: method calls are not supported by `pre` on the stable compiler
+  --> $DIR/method.rs:13:5
+   |
+13 |     X.foo();
+   |     ^^^^^^^

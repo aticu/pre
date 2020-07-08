@@ -1,0 +1,11 @@
+error: duplicate `forward` attribute
+  --> $DIR/duplicate_forward.rs:22:5
+   |
+22 |     #[forward(other_nested)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: there can be just one location, try removing the wrong one
+  --> $DIR/duplicate_forward.rs:21:5
+   |
+21 |     #[forward(nested)]
+   |     ^^^^^^^^^^^^^^^^^^
