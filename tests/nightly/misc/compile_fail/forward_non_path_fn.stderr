@@ -1,0 +1,7 @@
+error: unable to determine at compile time which function is being called
+  --> $DIR/forward_non_path_fn.rs:10:5
+   |
+10 |     array[0]();
+   |     ^^^^^^^^
+   |
+   = help: use a direct path to the function instead

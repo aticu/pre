@@ -221,11 +221,14 @@ impl Forward {
                     })
                     .expect("valid expression")
                 }
-                Forward::Replace { ref to, .. } => {
+                Forward::Replace {
+                    ref from, ref to, ..
+                } => {
                     emit_error!(
                         call.span(),
                         "a replacement `forward` attribute is not supported for method calls";
-                        help = self.span() => "replace it with a direct location, such as {}", quote! { #to },
+                        help = from.span().join(to.span()).unwrap_or_else(|| self.span()) =>
+                            "try replacing it with a direct location, such as `{}`", quote! { #to },
                     );
 
                     original_call.into()

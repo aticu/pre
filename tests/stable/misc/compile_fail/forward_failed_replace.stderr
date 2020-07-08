@@ -1,0 +1,33 @@
+error: cannot replace `b` in this path
+
+  = note: `b` != `a`
+  = help: try specifing a prefix of `a :: d :: foo` in the `forward` attribute
+
+  --> $DIR/forward_failed_replace.rs:22:5
+   |
+22 |     a::d::foo();
+   |     ^^^^^^^^^
+
+error[E0574]: expected struct, variant or union type, found function `a::d::foo`
+  --> $DIR/forward_failed_replace.rs:22:5
+   |
+22 |     a::d::foo();
+   |     ^^^^^^^^^ not a struct, variant or union type
+   |
+help: possible better candidate is found in another module, you can import it into scope
+   |
+1  | use crate::c::d::foo;
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/forward_failed_replace.rs:22:5
+   |
+5  |           pub(crate) fn foo() {}
+   |           ------------------- defined here
+...
+21 | /     #[assure("must be foo", reason = "is foo")]
+22 | |     a::d::foo();
+   | |     -^^^^^^^^
+   | |     |
+   | |_____expected 0 arguments
+   |       supplied 1 argument

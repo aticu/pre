@@ -1,0 +1,8 @@
+error: you need to specify a different reason here
+  --> $DIR/hint_reason.rs:10:18
+   |
+10 |         reason = "<specify the reason why you can assure this here>"
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: specifying a meaningful reason will help you and others understand why this is ok in the future
+   = help: using `TODO` here will emit a warning, reminding you to fix this later
