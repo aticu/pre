@@ -26,5 +26,8 @@ mod tests {
         let test_cases = TestCases::new();
 
         add_testcases!(test_cases, "nightly");
+
+        test_cases.pass("nightly/nightly-only/pass/*.rs");
+        test_cases.compile_fail("nightly/nightly-only/compile_fail/*.rs");
     }
 }
