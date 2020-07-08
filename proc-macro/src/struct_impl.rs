@@ -63,7 +63,7 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{format_ident, quote, quote_spanned, TokenStreamExt};
-use syn::{parse2, spanned::Spanned, Ident, ItemFn};
+use syn::{parse2, spanned::Spanned, Ident, ItemFn, PathArguments};
 
 use crate::{
     call::Call,
@@ -177,7 +177,7 @@ pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, sp
         return call;
     }
 
-    let path;
+    let mut path;
 
     if let Some(p) = call.path() {
         path = p;
@@ -192,6 +192,10 @@ pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, sp
         }
 
         return call;
+    }
+
+    if let Some(last_path_segment) = path.path.segments.last_mut() {
+        last_path_segment.arguments = PathArguments::None;
     }
 
     let mut preconditions_rendered = TokenStream::new();
