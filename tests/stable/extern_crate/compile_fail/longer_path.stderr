@@ -1,0 +1,17 @@
+error: only paths of length 1 are supported here
+
+  = help: try adding `ptr` as a submodule and put the `impl` block there
+
+ --> $DIR/longer_path.rs:3:13
+  |
+3 |     impl<T> ptr::NonNull<T> {
+  |             ^^^^^^^^^^^^^^^
+
+error: only paths of length 1 are supported here
+
+  = help: try adding `foo::bar` as submodules and put the `impl` block there
+
+ --> $DIR/longer_path.rs:8:10
+  |
+8 |     impl foo::bar::Baz {}
+  |          ^^^^^^^^^^^^^

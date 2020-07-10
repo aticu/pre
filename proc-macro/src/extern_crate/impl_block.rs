@@ -96,7 +96,27 @@ impl ImplBlock {
     pub(crate) fn ty(&self) -> Option<&PathSegment> {
         if let Type::Path(path) = &*self.self_ty {
             if path.path.segments.len() != 1 {
-                emit_error!(path, "only paths of length 1 are supported here");
+                let mut path_str = String::new();
+                for i in 0..(path.path.segments.len() - 1) {
+                    let segment = &path.path.segments[i];
+                    path_str.push_str(&quote! { #segment }.to_string());
+
+                    if i != path.path.segments.len() - 2 {
+                        path_str.push_str("::");
+                    }
+                }
+
+                let plural = if path.path.segments.len() > 2 {
+                    "submodules"
+                } else {
+                    "a submodule"
+                };
+
+                emit_error!(
+                    path,
+                    "only paths of length 1 are supported here";
+                    help = "try adding `{}` as {} and put the `impl` block there", path_str, plural
+                );
                 return None;
             }
 
