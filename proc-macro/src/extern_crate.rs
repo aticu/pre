@@ -8,6 +8,11 @@
 //!     mod ptr {
 //!         #[pre(valid_ptr(src, r))]
 //!         unsafe fn read<T>(src: *const T) -> T;
+//!
+//!         impl<T> NonNull<T> {
+//!             #[pre(!ptr.is_null())]
+//!             const unsafe fn new_unchecked(ptr: *mut T) -> NonNull<T>;
+//!         }
 //!     }
 //! }
 //! ```
@@ -15,17 +20,29 @@
 //! turns into
 //!
 //! ```rust,ignore
+//! #[doc = "..."]
 //! mod pre_std {
 //!     #[allow(unused_imports)]
 //!     use pre::pre;
 //!     #[allow(unused_imports)]
-//!     use std::*;
+//!     #[doc(no_inline)]
+//!     pub(crate) use std::*;
 //!
+//!     #[doc = "..."]
 //!     pub(crate) mod ptr {
 //!         #[allow(unused_imports)]
 //!         use pre::pre;
 //!         #[allow(unused_imports)]
-//!         use std::ptr::*;
+//!         #[doc(no_inline)]
+//!         pub(crate) use std::ptr::*;
+//!
+//!         #[doc = "..."]
+//!         #[pre(!ptr.is_null())]
+//!         #[pre(no_doc)]
+//!         #[pre(no_debug_assert)]
+//!         #[inline(always)]
+//!         #[allow(non_snake_case)]
+//!         pub(crate) fn NonNull__impl__new_unchecked__() {}
 //!
 //!         #[pre(valid_ptr(src, r))]
 //!         #[inline(always)]
