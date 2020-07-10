@@ -105,9 +105,39 @@ fn main() {
 inside the `pre` attribute at the function definition for the code to compile.**
 The order of the preconditions, if there are multiple, does not matter however.
 
+## Known Limitations
+
+Unfortunately while `pre` tries to be as helpful as possible, there are some situations in
+which it is quite limited in what it can do:
+
+- While `pre` does work on the stable compiler, there are quite a few things that only work
+  when using the nightly compiler.
+
+  These are the main differences between the nightly version and the stable version (there are
+  other minor ones):
+    - **Preconditions on functions in `impl` blocks only work on nightly.**
+
+      This does not apply to `impl` blocks inside of an `extern_crate` annotated module. These
+      have their own limitations though (see below).
+    - Warnings from `pre` are only possible on nightly.
+    - Errors can reference multiple locations providing better suggestions and messages on
+      nightly.
+- Since `pre` works by adding an additional argument to a function, it changes the function
+  signature. That won't make a difference in many cases, but if you use function pointers or
+  pass a function as an argument, it will have a different type from what it appears to be.
+- Because attribute macros are not supported for expressions and statements on the current
+  stable compiler, functions that contain an `assure` attribute must have at least one `pre`
+  attribute, though it could be empty:
+  [`#[pre]`](https://docs.rs/pre/0.1.0/pre/attr.pre.html#checking-functionality).
+- While it is possible to add preconditions to foreign items with the [`extern_crate`
+  attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html), method calls on for items
+  within foreign crates cannot be automatically checked. They need to have the [`forward`
+  attribute](https://docs.rs/pre/0.1.0/pre/attr.forward.html#impl-call) added to them in order to
+  properly check the preconditions.
+
 ## Background
 
-This library is developed for my bachelor's thesis titled "Implementierung und Evaluation von Vorbedinungskommunikation für unsafe Code in Rust".
+This library is developed for my bachelor's thesis titled "Implementierung und Evaluation von Vorbedinungskommunikation für unsafe Code in Rust" (in German).
 The second part of the thesis focuses on evaluating whether such a library is useful and whether the benefits are worth the additional effort.
 
 I'd be very grateful if you open an issue with any feedback that you have on this library, as that helps my evaluation efforts.

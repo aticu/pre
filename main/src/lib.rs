@@ -87,7 +87,7 @@
 //! ```rust,compile_fail
 //! use pre::pre;
 //!
-//! #[pre("`arg` must have a meaningful value")]
+//! #[pre("`arg` is a meaningful value")]
 //! fn foo(arg: i32) {
 //!     assert_eq!(arg, 42);
 //! }
@@ -100,6 +100,35 @@
 //! **The precondition inside the `assure` attribute must be exactly equal to the precondition
 //! inside the `pre` attribute at the function definition for the code to compile.**
 //! The order of the preconditions, if there are multiple, does not matter however.
+//!
+//! # Known Limitations
+//!
+//! Unfortunately while `pre` tries to be as helpful as possible, there are some situations in
+//! which it is quite limited in what it can do:
+//!
+//! - While `pre` does work on the stable compiler, there are quite a few things that only work
+//!   when using the nightly compiler.
+//!
+//!   These are the main differences between the nightly version and the stable version (there are
+//!   other minor ones):
+//!     - **Preconditions on functions in `impl` blocks only work on nightly.**
+//!
+//!       This does not apply to `impl` blocks inside of an `extern_crate` annotated module. These
+//!       have their own limitations though (see below).
+//!     - Warnings from `pre` are only possible on nightly.
+//!     - Errors can reference multiple locations providing better suggestions and messages on
+//!       nightly.
+//! - Since `pre` works by adding an additional argument to a function, it changes the function
+//!   signature. That won't make a difference in many cases, but if you use function pointers or
+//!   pass a function as an argument, it will have a different type from what it appears to be.
+//! - Because attribute macros are not supported for expressions and statements on the current
+//!   stable compiler, functions that contain an `assure` attribute must have at least one `pre`
+//!   attribute, though it could be empty: [`#[pre]`](attr.pre.html#checking-functionality).
+//! - While it is possible to add preconditions to foreign items with the [`extern_crate`
+//!   attribute](attr.extern_crate.html), method calls on for items within foreign crates cannot be
+//!   automatically checked. They need to have the [`forward`
+//!   attribute](attr.forward.html#impl-call) added to them in order to properly check the
+//!   preconditions.
 //!
 //! # Changing an existing codebase to use `pre`
 //!
@@ -595,11 +624,11 @@ pub use pre_proc_macro::forward;
 ///     mod mem {
 ///         // Notice that the body of the function is missing.
 ///         // It's behavior is exactly the same as `core::mem::zeroed`.
-///         #[pre("an all-zero byte-pattern must be valid for `T`")]
+///         #[pre("an all-zero byte-pattern is valid for `T`")]
 ///         unsafe fn zeroed<T>() -> T;
 ///
 ///         impl<T> MaybeUninit<T> {
-///             #[pre("the contained value must be an initialized, valid value of `T`")]
+///             #[pre("the contained value is an initialized, valid value of `T`")]
 ///             unsafe fn assume_init(self) -> T;
 ///         }
 ///     }
@@ -613,7 +642,7 @@ pub use pre_proc_macro::forward;
 ///     // When using functions from `new_core`, the preconditions applied there are checked, but
 ///     // the behavior is the same as the original function in `core`.
 ///     #[assure(
-///         "an all-zero byte-pattern must be valid for `T`",
+///         "an all-zero byte-pattern is valid for `T`",
 ///         reason = "`usize` supports an all-zero byte-pattern"
 ///     )]
 ///     let x: usize = unsafe { mem::zeroed() };
@@ -631,7 +660,7 @@ pub use pre_proc_macro::forward;
 ///     // The `forward` attribute here is required to find the preconditions for this function.
 ///     #[forward(impl new_core::mem::MaybeUninit)]
 ///     #[assure(
-///         "the contained value must be an initialized, valid value of `T`",
+///         "the contained value is an initialized, valid value of `T`",
 ///         reason = "the value `true` was just written to `b`"
 ///     )]
 ///     let val = unsafe { b.assume_init() };
