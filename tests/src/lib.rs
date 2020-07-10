@@ -2,16 +2,19 @@
 mod tests {
     use trybuild::TestCases;
 
+    macro_rules! add_category {
+        ($test_cases:expr, $scenario:literal, $category:literal) => {{
+            $test_cases.pass(concat!($scenario, "/", $category, "/pass/*.rs"));
+            $test_cases.compile_fail(concat!($scenario, "/", $category, "/compile_fail/*.rs"));
+        }};
+    }
+
     macro_rules! add_testcases {
         ($test_cases:expr, $scenario:literal) => {{
-            $test_cases.pass(concat!($scenario, "/function/pass/*.rs"));
-            $test_cases.compile_fail(concat!($scenario, "/function/compile_fail/*.rs"));
-
-            $test_cases.pass(concat!($scenario, "/precondition_types/pass/*.rs"));
-            $test_cases.compile_fail(concat!($scenario, "/precondition_types/compile_fail/*.rs"));
-
-            $test_cases.pass(concat!($scenario, "/misc/pass/*.rs"));
-            $test_cases.compile_fail(concat!($scenario, "/misc/compile_fail/*.rs"));
+            add_category!($test_cases, $scenario, "function");
+            add_category!($test_cases, $scenario, "precondition_types");
+            add_category!($test_cases, $scenario, "extern_crate");
+            add_category!($test_cases, $scenario, "misc");
         }};
     }
 
@@ -22,8 +25,7 @@ mod tests {
 
         add_testcases!(test_cases, "stable");
 
-        test_cases.pass("stable/stable-only/pass/*.rs");
-        test_cases.compile_fail("stable/stable-only/compile_fail/*.rs");
+        add_category!(test_cases, "stable", "stable-only");
     }
 
     #[cfg(nightly)]
@@ -33,7 +35,6 @@ mod tests {
 
         add_testcases!(test_cases, "nightly");
 
-        test_cases.pass("nightly/nightly-only/pass/*.rs");
-        test_cases.compile_fail("nightly/nightly-only/compile_fail/*.rs");
+        add_category!(test_cases, "nightly", "nightly-only");
     }
 }
