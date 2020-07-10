@@ -106,6 +106,8 @@
 //! Unfortunately while `pre` tries to be as helpful as possible, there are some situations in
 //! which it is quite limited in what it can do:
 //!
+//! - There is more than one form of `unsafe` code. `pre` currently exclusively focuses on `unsafe`
+//!   functions.
 //! - While `pre` does work on the stable compiler, there are quite a few things that only work
 //!   when using the nightly compiler.
 //!
@@ -124,16 +126,51 @@
 //! - Because attribute macros are not supported for expressions and statements on the current
 //!   stable compiler, functions that contain an `assure` attribute must have at least one `pre`
 //!   attribute, though it could be empty: [`#[pre]`](attr.pre.html#checking-functionality).
-//! - While it is possible to add preconditions to foreign items with the [`extern_crate`
-//!   attribute](attr.extern_crate.html), method calls on for items within foreign crates cannot be
-//!   automatically checked. They need to have the [`forward`
-//!   attribute](attr.forward.html#impl-call) added to them in order to properly check the
-//!   preconditions.
+//! - There are multiple limitations for functions and methods defined in a module which is
+//!   annotated with the [`extern_crate` attribute](attr.extern_crate.html) or has a parent that
+//!   is:
+//!     - Calls to such functions/methods call the original function/method for the original type,
+//!       which means that preconditions are not taken into consideration. Use the [`forward`
+//!       attribute](attr.forward.html#impl-call) to check the preconditions on these calls.
+//!     - Because of the way they are implemented, it's currently possible for the name of these
+//!       functions to clash with names in their surrounding module. This is unlikely to occur in
+//!       regular usage, but possible. If you encounter such a case, please open an issue
+//!       describing the problem.
+//!     - Currently all type information for the `impl` block is discarded. This means that
+//!       multiple non-overlapping (in the type system sense) `impl` blocks can overlap in an
+//!       `extern_crate` annotated module.
 //!
-//! # Changing an existing codebase to use `pre`
+//!       ```rust,compile_fail
+//!       mod a {
+//!           pub(crate) struct X<T>(T);
 //!
-//! One problem when changing a codebase to use `pre` is that once a function has preconditions, it
-//! needs them `assure`d everywhere.
+//!           impl X<bool> {
+//!               pub(crate) fn foo() {}
+//!           }
+//!
+//!           impl X<()> {
+//!               pub(crate) fn foo() {}
+//!           }
+//!       }
+//!
+//!       #[pre::extern_crate(crate::a)]
+//!       mod b {
+//!           impl X<bool> {
+//!               fn foo();
+//!           }
+//!
+//!           impl X<()> {
+//!               fn foo();
+//!           }
+//!       }
+//!       #
+//!       # fn main() {}
+//!       ```
+//!
+//! # Changing an existing code base to use `pre`
+//!
+//! One problem when changing a code base to use `pre` is that once a function has preconditions,
+//! it needs them `assure`d everywhere.
 //! For functions that are used a lot, it can be a big task to check and `assure` all call sites at
 //! once.
 //!
