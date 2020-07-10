@@ -1,44 +1,113 @@
 # pre
 
-`pre` is a work in progress [Rust](https://www.rust-lang.org/) crate that allows annotating functions and their call sites with preconditions and makes sure they match.
+`pre` is a [Rust](https://www.rust-lang.org/) library to help programmers correctly uphold preconditions for function calls.
 It is mostly intended for use with `unsafe` functions, as they have preconditions that cannot be checked at compile-time.
-The main feature of `pre` is that probably incorrect code will not compile.
+
+## Motivation
+
+Sometimes functions or methods have preconditions that cannot be ensured in the type system and
+cannot be guarded against at runtime.
+The most prominent example of functions like that are `unsafe` functions.
+When used correctly, `unsafe` functions are used to ["declare the existence of contracts the
+compiler can't check"](https://doc.rust-lang.org/nomicon/safe-unsafe-meaning.html).
+These contracts are the preconditions for the function call.
+Failing to uphold them usually results in a violation of memory safety and undefined behavior.
+
+Currently the most used scheme for dealing with these preconditions on `unsafe` functions is to
+mention them in the `Safety` section of the function's documentation. Programmers using the
+function then have to check what they have to ensure to call the function correctly. The
+programmer that uses the function may then leave a comment next to the function, describing why
+the call is safe (why the preconditions hold).
+
+This approach is even advertised by the compiler (as of 1.44.1) when using an `unsafe` function
+outside of an `unsafe` block:
+
+```text
+note: consult the function's documentation for information on how to avoid undefined behavior
+```
+
+There are multiple points of failure with this approach. Among others these are:
+
+1. The original function could not document what the preconditions are.
+2. The programmer using the function could forget to look at the documented preconditions.
+3. The programmer using the function could overlook one or more of the preconditions. This is
+   not unlikely, if multiple preconditions are documented in a single long paragraph.
+4. The programmer could make a mistake when checking whether the preconditions hold.
+5. An update could change the preconditions that the function requires and users of the
+   function could easily miss that fact.
+6. The programmer could forget (or choose not to) document why the preconditions hold when
+   calling the function, making it easier for others to make a mistake when later changing the
+   call or code around it.
+
+This library cannot guard against all of these problems, especially not against 1 and 4.
+It however attempts to help against 2, 3, 5 and 6.
+
+## The approach
+
+This library works by allowing programmers to specify preconditions on functions they write in
+a unified format.
+Those preconditions are then transformed into an additional function argument.
+Callers of the function then specify the same preconditions at the call site, along with a
+reason why they believe the precondition is upheld.
+If the preconditions don't match or are not specified, the function will have invalid arguments
+and the code will not compile. This should protect against problems 2, 3 and 5 from above.
+Because a reason is required at the function call site, problem 6 is at least partially guarded
+against, though programmers could still choose to not put too much effort into the reason.
+
+The signature of the functions is changed by adding a single *zero-sized* parameter.
+**This means that when compiled using the release mode, there is no run-time cost for these
+checks. They are a zero-cost abstraction.**
+
+## Usage
+
+The basic usage for the `pre` crate looks like this:
 
 ```rust
 use pre::pre;
 
-#[pre(valid_ptr(ptr, r))]
-unsafe fn read_twice<T: Copy>(ptr: *const T) -> (T, T) {
-    (std::ptr::read(ptr), std::ptr::read(ptr))
+#[pre("`arg` is a meaningful value")]
+fn foo(arg: i32) {
+    assert_eq!(arg, 42);
 }
 
-#[pre]
+#[pre] // Enables `assure`ing preconditions inside the function
 fn main() {
-    let ptr: *const i32 = &42;
-
-    let (a, b) = unsafe {
-        #[assure(valid_ptr(ptr, r), reason = "the pointer is created from a reference")]
-        read_twice(ptr)
-    };
-
-    println!("First: {}", a);
-    println!("Second: {}", b);
+    #[assure("`arg` is a meaningful value", reason = "42 is very meaningful")]
+    foo(42);
 }
 ```
 
-## Project Goals
+The [`pre` attribute](https://docs.rs/pre/0.1.0/pre/attr.pre.html) serves to specify
+preconditions (on `foo`) and to enable usage of the `assure` attribute (on `main`).
+To learn why the second usage is necessary, read the [paragraph about the checking
+functionality](https://docs.rs/pre/0.1.0/pre/attr.pre.html#checking-functionality) on the
+documentation of the `pre` attribute.
 
-These are to goals for the project in order of importance.
-Not necessarily all of them will be possible at the same time.
+With the [`assure` attribute](https://docs.rs/pre/0.1.0/pre/attr.assure.html) the
+programmer assures that the precondition was checked by them and is upheld.
+Without the `assure` attribute, the code would fail to compile.
 
-- The library should produce errors at function call sites in the following cases:
-  - At least one precondition was specified at the function definition, but none was specified at the call site.
-  - A precondition was specified at the function definition, but that precondition was not specified at the call site.
-  - A precondition was specified at the function call site, but that precondition was not specified at its definition.
-  - A precondition was specified at the function call site, but no preconditions were specified at its definition.
-- There should be no runtime overhead in the release version of the compiled binary.
-- The order of the preconditions should not matter.
-- The error messages should be easy to understand and inform the programmer how to fix the problem.
-- There should be an option to insert the preconditions for the standard library functions without modifying the source, as if they were specified in the standard library. This would serve as a basis for doing code reviews using `unsafe` code.
-- The library should ideally work on the stable Rust compiler, though this requirement likely contradicts the "nice error messages" requirement.
-- The library should not have a large impact on compile times.
+```rust,compile_fail
+use pre::pre;
+
+#[pre("`arg` must have a meaningful value")]
+fn foo(arg: i32) {
+    assert_eq!(arg, 42);
+}
+
+fn main() {
+    foo(42);
+//  ^^^^^^^-- this errors
+}
+```
+
+**The precondition inside the `assure` attribute must be exactly equal to the precondition
+inside the `pre` attribute at the function definition for the code to compile.**
+The order of the preconditions, if there are multiple, does not matter however.
+
+## Background
+
+This library is developed for my bachelor's thesis titled "Implementierung und Evaluation von Vorbedinungskommunikation für unsafe Code in Rust".
+The second part of the thesis focuses on evaluating whether such a library is useful and whether the benefits are worth the additional effort.
+
+I'd be very grateful if you open an issue with any feedback that you have on this library, as that helps my evaluation efforts.
