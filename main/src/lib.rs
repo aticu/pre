@@ -100,6 +100,120 @@
 //! **The precondition inside the `assure` attribute must be exactly equal to the precondition
 //! inside the `pre` attribute at the function definition for the code to compile.**
 //! The order of the preconditions, if there are multiple, does not matter however.
+//!
+//! # Changing an existing codebase to use `pre`
+//!
+//! One problem when changing a codebase to use `pre` is that once a function has preconditions, it
+//! needs them `assure`d everywhere.
+//! For functions that are used a lot, it can be a big task to check and `assure` all call sites at
+//! once.
+//!
+//! There are two ways to work around that, though one is currently only supported on the nightly
+//! compiler.
+//!
+//! ## `extern_crate` for local items
+//!
+//! Suppose you have a function `some_module::some_fn` with a lot of uses that you want to change
+//! to use `pre` without changing all call sites at once.
+//!
+//! ```rust
+//! mod some_module {
+//!     pub(crate) unsafe fn some_fn() {
+//!         /* ... */
+//!     }
+//! }
+//!
+//! fn main() {
+//!     use some_module::some_fn;
+//!
+//!     // Lots of uses
+//!     unsafe {
+//!         some_fn();
+//!         some_fn();
+//!     }
+//! }
+//! ```
+//!
+//! You can use the [`extern_crate` attribute](attr.extern_crate.html) to create a version of
+//! `some_fn` with preconditions.
+//!
+//! ```rust
+//! use pre::pre;
+//!
+//! mod some_module {
+//!     pub(crate) unsafe fn some_fn() {
+//!         /* ... */
+//!     }
+//! }
+//!
+//! #[pre::extern_crate(crate::some_module)]
+//! mod pre_some_module {
+//!     #[pre("some condition")]
+//!     unsafe fn some_fn();
+//! }
+//!
+//! #[pre]
+//! fn main() {
+//!     use some_module::some_fn;
+//!
+//!     unsafe {
+//!         // Checks the preconditions of the function.
+//!         #[forward(pre_some_module)]
+//!         #[assure("some condition", reason = "the reason you know the condition is true")]
+//!         some_fn();
+//!
+//!         // Does not check any preconditions as before the modifications.
+//!         some_fn();
+//!     }
+//! }
+//! ```
+//!
+//! When you've converted all call sites and you're ready to fully convert the function, you can
+//! simply add the preconditions to the original function and remove the [`forward`
+//! attributes](attr.forward.html).
+//!
+//! ```rust
+//! use pre::pre;
+//!
+//! mod some_module {
+//!     use pre::pre;
+//!
+//!     #[pre("some condition")]
+//!     pub(crate) unsafe fn some_fn() {
+//!         /* ... */
+//!     }
+//! }
+//!
+//! #[pre]
+//! fn main() {
+//!     use some_module::some_fn;
+//!
+//!     unsafe {
+//!         #[assure("some condition", reason = "the reason you know the condition is true")]
+//!         some_fn();
+//!
+//!         #[assure("some condition", reason = "the (possibly other) reason you know the condition is true")]
+//!         some_fn();
+//!     }
+//! }
+//! ```
+//!
+//! ## `"TODO"` as a reason
+//!
+//! **This paragraph only applies if you use the nightly compiler**, because it depends on the
+//! [`proc_macro_diagnostic` feature](https://github.com/rust-lang/rust/issues/54140).
+//!
+//! Using `"TODO"` as a reason in an `assure` attribute will issue a warning, to remind you of
+//! checking why you believe the precondition holds.
+//!
+//! When changing a function to use `pre`, you can simply `assure` all its preconditions at all
+//! call sites with `"TODO"` as the reason.
+//! **Of course this does not make the use of the function any safer by itself.**
+//! However it allows everything to compile again and have the compiler warnings remind you what
+//! you need to `assure` still.
+//!
+//! Because the warnings only work on the nightly compiler, **usage of `"TODO"` as a reason is
+//! discouraged when using the stable compiler**.
 
 #![allow(clippy::needless_doctest_main)]
 #![cfg_attr(nightly, feature(const_generics))]
