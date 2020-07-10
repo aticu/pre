@@ -50,7 +50,7 @@
 //! If the preconditions don't match or are not specified, the function will have invalid arguments
 //! and the code will not compile. This should protect against problems 2, 3 and 5 from above.
 //! Because a reason is required at the function call site, problem 6 is at least partially guarded
-//! against, though programmers may still choose to not put too much effort into the reason.
+//! against, though programmers could still choose to not put too much effort into the reason.
 //!
 //! The signature of the functions is changed by adding a single *zero-sized* parameter.
 //! **This means that when compiled using the release mode, there is no run-time cost for these
@@ -63,14 +63,14 @@
 //! ```rust
 //! use pre::pre;
 //!
-//! #[pre("`arg` must have a meaningful value")]
+//! #[pre("`arg` is a meaningful value")]
 //! fn foo(arg: i32) {
 //!     assert_eq!(arg, 42);
 //! }
 //!
 //! #[pre] // Enables `assure`ing preconditions inside the function
 //! fn main() {
-//!     #[assure("`arg` must have a meaningful value", reason = "42 is very meaningful")]
+//!     #[assure("`arg` is a meaningful value", reason = "42 is very meaningful")]
 //!     foo(42);
 //! }
 //! ```
@@ -84,10 +84,6 @@
 //! was checked by them and is upheld.
 //! Without the `assure` attribute, the code would fail to compile.
 //!
-//! **The precondition inside the `assure` attribute must be exactly equal to the precondition
-//! inside the `pre` attribute at the function definition for the code to compile.**
-//! The order of the preconditions, if there are multiple, does not matter however.
-//!
 //! ```rust,compile_fail
 //! use pre::pre;
 //!
@@ -100,6 +96,10 @@
 //!     foo(42);
 //! }
 //! ```
+//!
+//! **The precondition inside the `assure` attribute must be exactly equal to the precondition
+//! inside the `pre` attribute at the function definition for the code to compile.**
+//! The order of the preconditions, if there are multiple, does not matter however.
 
 #![allow(clippy::needless_doctest_main)]
 #![cfg_attr(nightly, feature(const_generics))]
