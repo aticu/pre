@@ -187,22 +187,25 @@ documentation for the function.
 **nightly compiler error**
 ```text
 error[E0308]: mismatched types
- --> src/main.rs:8:5
-  |
-8 |     #[assure(x > 41.0, reason = "42.0 > 41.0")]
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `"x > 41.9"`, found `"x > 41.0"`
-  |
-  = note: expected struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.9">,)>`
-             found struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.0">,)>`
+  --> src/main.rs:8:5
+   |
+8  | /     #[assure(
+9  | |         x > 41.0,
+10 | |         reason = "42.0 > 41.0"
+11 | |     )]
+   | |______^ expected `"x > 41.9"`, found `"x > 41.0"`
+   |
+   = note: expected struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.9">,)>`
+              found struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.0">,)>`
 ```
 
 **stable compiler error**
 ```text
 error[E0560]: struct `foo` has no field named `_boolean_x_20_3e_2041_2e0`
- --> src/main.rs:8:14
+ --> src/main.rs:9:9
   |
-8 |     #[assure(x > 41.0, reason = "42.0 > 41.0")]
-  |              ^ help: a field with a similar name exists: `_boolean_x_20_3e_2041_2e9`
+9 |         x > 41.0,
+  |         ^ help: a field with a similar name exists: `_boolean_x_20_3e_2041_2e9`
 ```
 
 This error means that the preconditions that were
@@ -223,21 +226,24 @@ You should be able to find the function preconditions in the documentation for t
 **nightly compiler error**
 ```text
 error[E0308]: mismatched types
- --> src/main.rs:9:5
-  |
-9 |     #[assure(x > 41.9, reason = "42.0 > 41.9")]
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 1 element
-  |
-  = note: expected struct `std::marker::PhantomData<(pre::BooleanCondition<"x < 42.1">, pre::BooleanCondition<"x > 41.9">)>`
-             found struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.9">,)>`
+  --> src/main.rs:9:5
+   |
+9  | /     #[assure(
+10 | |         x > 41.9,
+11 | |         reason = "42.0 > 41.9"
+12 | |     )]
+   | |______^ expected a tuple with 2 elements, found one with 1 element
+   |
+   = note: expected struct `std::marker::PhantomData<(pre::BooleanCondition<"x < 42.1">, pre::BooleanCondition<"x > 41.9">)>`
+              found struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.9">,)>`
 ```
 
 **stable compiler error**
 ```text
 error[E0063]: missing field `_boolean_x_20_3c_2042_2e1` in initializer of `foo`
-  --> src/main.rs:10:5
+  --> src/main.rs:13:5
    |
-10 |     foo(42.0);
+13 |     foo(42.0);
    |     ^^^ missing `_boolean_x_20_3c_2042_2e1`
 ```
 
@@ -255,39 +261,45 @@ documentation for the function.
 **nightly compiler error**
 ```text
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
- --> src/main.rs:8:5
-  |
-3 | fn foo(x: f32) {}
-  | -------------- defined here
+  --> src/main.rs:11:5
+   |
+3  |   fn foo(x: f32) {}
+   |   -------------- defined here
 ...
-7 |     #[assure(x > 41.9, reason = "42.0 > 41.9")]
-  |     ------------------------------------------- supplied 2 arguments
-8 |     foo(42.0);
-  |     ^^^ ----
-  |     |
-  |     expected 1 argument
+7  | /     #[assure(
+8  | |         x > 41.9,
+9  | |         reason = "42.0 > 41.9"
+10 | |     )]
+   | |______- supplied 2 arguments
+11 |       foo(42.0);
+   |       ^^^ ----
+   |       |
+   |       expected 1 argument
 ```
 
 **stable compiler error**
 ```text
 error[E0574]: expected struct, variant or union type, found function `foo`
- --> src/main.rs:8:5
-  |
-8 |     foo(42.0);
-  |     ^^^ not a struct, variant or union type
+  --> src/main.rs:11:5
+   |
+11 |     foo(42.0);
+   |     ^^^ not a struct, variant or union type
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
- --> src/main.rs:8:5
-  |
-3 |   fn foo(x: f32) {}
-  |   -------------- defined here
+  --> src/main.rs:11:5
+   |
+3  |   fn foo(x: f32) {}
+   |   -------------- defined here
 ...
-7 | /     #[assure(x > 41.9, reason = "42.0 > 41.9")]
-8 | |     foo(42.0);
-  | |     ^^- ----
-  | |_____|_|
-  |       | supplied 2 arguments
-  |       expected 1 argument
+7  | /     #[assure(
+8  | |         x > 41.9,
+9  | |         reason = "42.0 > 41.9"
+10 | |     )]
+11 | |     foo(42.0);
+   | |     ^^- ----
+   | |_____|_|
+   |       | supplied 2 arguments
+   |       expected 1 argument
 ```
 
 This error means that one or more preconditions were
