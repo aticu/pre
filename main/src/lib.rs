@@ -167,6 +167,21 @@
 //!       # fn main() {}
 //!       ```
 //!
+//! # Wording of preconditions
+//!
+//! While you can write any text you like in a [custom
+//! precondition](attr.pre.html#precondition-syntax), it is recommended to word them in a way that
+//! makes sense at both the definition and the call site.
+//!
+//! Therefore it is recommended not to write how things *should be*, but rather how they *are* when
+//! everything is going well.
+//!
+//! > "the elements at `old_len..new_len` must be initialized"
+//!
+//! should instead be written as
+//!
+//! > "the elements at `old_len..new_len` **are** initialized"
+//!
 //! # Changing an existing code base to use `pre`
 //!
 //! One problem when changing a code base to use `pre` is that once a function has preconditions,
