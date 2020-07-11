@@ -1,5 +1,5 @@
-error[E0063]: missing field `_custom_must_20be_20baz` in initializer of `foo`
+error[E0063]: missing field `_custom_is_20baz` in initializer of `foo`
   --> $DIR/precondition_missing.rs:10:5
    |
 10 |     foo()
-   |     ^^^ missing `_custom_must_20be_20baz`
+   |     ^^^ missing `_custom_is_20baz`

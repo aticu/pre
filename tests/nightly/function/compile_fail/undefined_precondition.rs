@@ -4,6 +4,6 @@ fn foo() {}
 
 #[pre]
 fn main() {
-    #[assure("must be bar", reason = "is bar")]
+    #[assure("is bar", reason = "foo is bar")]
     foo()
 }

@@ -25,7 +25,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 5  |           pub(crate) fn foo() {}
    |           ------------------- defined here
 ...
-21 | /     #[assure("must be foo", reason = "is foo")]
+21 | /     #[assure("is foo", reason = "foo is always foo")]
 22 | |     a::d::foo();
    | |     -^^^^^^^^
    | |     |

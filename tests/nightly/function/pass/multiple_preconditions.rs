@@ -1,12 +1,12 @@
 use pre::pre;
 
-#[pre("must be bar")]
-#[pre("must also be baz")]
+#[pre("is bar")]
+#[pre("is also baz")]
 fn foo() {}
 
 #[pre]
 fn main() {
-    #[assure("must be bar", reason = "is bar")]
-    #[assure("must also be baz", reason = "is also baz")]
+    #[assure("is bar", reason = "foo is bar")]
+    #[assure("is also baz", reason = "foo is also baz")]
     foo()
 }

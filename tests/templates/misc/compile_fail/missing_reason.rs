@@ -1,10 +1,10 @@
 use pre::pre;
 
-#[pre("must be bar")]
+#[pre("is foo")]
 fn foo() {}
 
 #[pre]
 fn main() {
-    #[assure("must be bar")]
+    #[assure("is foo")]
     foo()
 }

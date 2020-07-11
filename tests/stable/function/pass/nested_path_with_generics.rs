@@ -5,7 +5,7 @@ mod a {
         pub(crate) mod c {
             use pre::pre;
 
-            #[pre("must be foo")]
+            #[pre("is foo")]
             pub(crate) fn foo<T>() {}
         }
     }
@@ -13,6 +13,6 @@ mod a {
 
 #[pre]
 fn main() {
-    #[assure("must be foo", reason = "is foo")]
+    #[assure("is foo", reason = "foo is always foo")]
     a::b::c::foo::<f64>();
 }

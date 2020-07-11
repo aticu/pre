@@ -10,7 +10,7 @@ mod c {
     pub(crate) mod d {
         use pre::pre;
 
-        #[pre("must be foo")]
+        #[pre("is foo")]
         pub(crate) fn foo() {}
     }
 }
@@ -18,6 +18,6 @@ mod c {
 #[pre]
 fn main() {
     #[forward(b -> c)]
-    #[assure("must be foo", reason = "is foo")]
+    #[assure("is foo", reason = "foo is always foo")]
     a::d::foo();
 }
