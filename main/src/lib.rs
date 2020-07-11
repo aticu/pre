@@ -451,6 +451,28 @@
 ///
 /// Its counterpart is the [`assure` attribute](attr.assure.html).
 ///
+/// # Basic usage example
+///
+/// Suppose you have a precondition stating that a function `use_foo` must only be called after
+/// some other initialization function `init_foo` was called. You could add that precondition to
+/// the `use_foo` function as follows:
+///
+/// ```rust
+/// use pre::pre;
+///
+/// #[pre("is only called after `init_foo` was called")]
+/// fn use_foo(/* ... */) {
+///     /* ... */
+/// }
+/// ```
+///
+/// To call the function `use_foo` now, you have to
+/// [`assure`](attr.assure.html#basic-usage-example) that the precondition holds.
+///
+/// Note that the precondition states [*how things are if everything goes
+/// well*](index.html#wording-of-preconditions) and not how they *should be*.
+/// This makes it easier to read code calling the function.
+///
 /// # General syntax
 ///
 /// There are three uses of the `pre` attribute:
@@ -592,6 +614,41 @@ pub use pre_proc_macro::pre;
 /// Currently this attribute does not work by itself.
 /// It needs to be used inside of a context that is annotated by a `pre` attribute.
 ///
+/// # Basic usage example
+///
+/// Suppose you want to call the function `use_foo` from the [example in the `pre` attribute
+/// documentation](attr.pre.html).
+///
+/// First you need to find out what its preconditions are. You can do that by looking at its
+/// documentation. For this example we can also look at the source code for the function and see
+/// the precondition there.
+///
+/// It has one precondition:
+///
+/// - is only called after `init_foo` was called
+///
+/// Armed with that knowledge, we can write the code to call the function.
+///
+/// ```rust
+/// use pre::pre;
+/// #
+/// # fn init_foo() {}
+/// # #[pre("is only called after `init_foo` was called")]
+/// # fn use_foo() {}
+///
+/// #[pre] // This is required, so `assure` works
+/// fn main() {
+///     // This call allows us to safely assure the precondition later.
+///     init_foo(/* ... */);
+///
+///     #[assure(
+///         "is only called after `init_foo` was called",
+///         reason = "we just called `init_foo`"
+///     )]
+///     use_foo(/* ... */);
+/// }
+/// ```
+///
 /// # Terminology
 ///
 /// The term `assure` was chosen, because it most accurately describes the function of the
@@ -607,9 +664,18 @@ pub use pre_proc_macro::pre;
 /// The basic syntax of the `assure` attribute is:
 ///
 /// ```rust,ignore
-/// #[assure(<first precondition>, reason = "<the reason why the first precondition can be assured>")]
-/// #[assure(<second precondition>, reason = "<the reason why the second precondition can be assured>")]
-/// #[assure(<third precondition>, reason = "<the reason why the third precondition can be assured>")]
+/// #[assure(
+///     <first precondition>,
+///     reason = "<the reason why the first precondition can be assured>"
+/// )]
+/// #[assure(
+///     <second precondition>,
+///     reason = "<the reason why the second precondition can be assured>"
+/// )]
+/// #[assure(
+///     <third precondition>,
+///     reason = "<the reason why the third precondition can be assured>"
+/// )]
 /// foo();
 /// ```
 ///
