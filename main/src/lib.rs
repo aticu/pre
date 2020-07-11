@@ -167,6 +167,153 @@
 //!       # fn main() {}
 //!       ```
 //!
+//! # Understanding the error messages
+//!
+//! `pre` tries to be as helpful as possible in the error messages it gives. Unfortunately in some
+//! cases `pre` does not have enough information to generate an error by itself, but has to rely on
+//! rustc to do so later in the compilation. `pre` has very limited control over what these
+//! messages look like.
+//!
+//! If you have trouble understanding these error messages, here is a little
+//! overview what they look like and what they mean:
+//!
+//! ---
+//!
+//! ```text
+//! error[E0061]: this function takes 2 arguments but 1 argument was supplied
+//!  --> src/main.rs:7:5
+//!   |
+//! 3 |   #[pre(x > 41.9)]
+//!   |  _______-
+//! 4 | | fn foo(x: f32) {}
+//!   | |_________________- defined here
+//! ...
+//! 7 |       foo(42.0);
+//!   |       ^^^ ---- supplied 1 argument
+//!   |       |
+//!   |       expected 2 arguments
+//! ```
+//!
+//! This error means that the function has preconditions, but they are not
+//! [`assure`d](attr.assure.html).
+//!
+//! To fix this error, find out what preconditions for the function are and whether they hold.
+//! Once you're convinced that they hold, you can `assure` that to `pre` with an [`assure`
+//! attribute](attr.assure.html) and explain in the `reason`, why you're sure that they hold.
+//! You should be able to find the function preconditions in the documentation for the function.
+//!
+//! ---
+//!
+//! **nightly compiler error**
+//! ```text
+//! error[E0308]: mismatched types
+//!  --> src/main.rs:8:5
+//!   |
+//! 8 |     #[assure(x > 41.0, reason = "42.0 > 41.0")]
+//!   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `"x > 41.9"`, found `"x > 41.0"`
+//!   |
+//!   = note: expected struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.9">,)>`
+//!              found struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.0">,)>`
+//! ```
+//!
+//! **stable compiler error**
+//! ```text
+//! error[E0560]: struct `foo` has no field named `_boolean_x_20_3e_2041_2e0`
+//!  --> src/main.rs:8:14
+//!   |
+//! 8 |     #[assure(x > 41.0, reason = "42.0 > 41.0")]
+//!   |              ^ help: a field with a similar name exists: `_boolean_x_20_3e_2041_2e9`
+//! ```
+//!
+//! This error means that the preconditions that were [`assure`d](attr.assure.html) at the call
+//! site were different from the preconditions at the function definition.
+//!
+//! Unfortunately the stable compiler error is not very readable for symbol heavy preconditions.
+//! If have trouble reading these error messages, it is recommended to use the nightly compiler to
+//! fix these errors. Once they are fixed, you can continue using the stable compiler.
+//!
+//! To fix this error, make sure that all `assure`d preconditions match the preconditions on the
+//! function exactly.
+//! Also when making changes to the `assure`d preconditions, make sure that they still hold.
+//! You should be able to find the function preconditions in the documentation for the function.
+//!
+//! ---
+//!
+//! **nightly compiler error**
+//! ```text
+//! error[E0308]: mismatched types
+//!  --> src/main.rs:9:5
+//!   |
+//! 9 |     #[assure(x > 41.9, reason = "42.0 > 41.9")]
+//!   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 1 element
+//!   |
+//!   = note: expected struct `std::marker::PhantomData<(pre::BooleanCondition<"x < 42.1">, pre::BooleanCondition<"x > 41.9">)>`
+//!              found struct `std::marker::PhantomData<(pre::BooleanCondition<"x > 41.9">,)>`
+//! ```
+//!
+//! **stable compiler error**
+//! ```text
+//! error[E0063]: missing field `_boolean_x_20_3c_2042_2e1` in initializer of `foo`
+//!   --> src/main.rs:10:5
+//!    |
+//! 10 |     foo(42.0);
+//!    |     ^^^ missing `_boolean_x_20_3c_2042_2e1`
+//! ```
+//!
+//! This error means that some, but not all, preconditions were [`assure`d](attr.assure.html) for a
+//! call.
+//!
+//! To fix this error, find out what preconditions you didn't consider yet and check whether they
+//! hold. Once you're convinced that they hold, you can `assure` that to `pre` with an [`assure`
+//! attribute](attr.assure.html) and explain in the `reason`, why you're sure that they hold.
+//! You should be able to find the function preconditions in the documentation for the function.
+//!
+//! ---
+//!
+//! **nightly compiler error**
+//! ```text
+//! error[E0061]: this function takes 1 argument but 2 arguments were supplied
+//!  --> src/main.rs:8:5
+//!   |
+//! 3 | fn foo(x: f32) {}
+//!   | -------------- defined here
+//! ...
+//! 7 |     #[assure(x > 41.9, reason = "42.0 > 41.9")]
+//!   |     ------------------------------------------- supplied 2 arguments
+//! 8 |     foo(42.0);
+//!   |     ^^^ ----
+//!   |     |
+//!   |     expected 1 argument
+//! ```
+//!
+//! **stable compiler error**
+//! ```text
+//! error[E0574]: expected struct, variant or union type, found function `foo`
+//!  --> src/main.rs:8:5
+//!   |
+//! 8 |     foo(42.0);
+//!   |     ^^^ not a struct, variant or union type
+//!
+//! error[E0061]: this function takes 1 argument but 2 arguments were supplied
+//!  --> src/main.rs:8:5
+//!   |
+//! 3 |   fn foo(x: f32) {}
+//!   |   -------------- defined here
+//! ...
+//! 7 | /     #[assure(x > 41.9, reason = "42.0 > 41.9")]
+//! 8 | |     foo(42.0);
+//!   | |     ^^- ----
+//!   | |_____|_|
+//!   |       | supplied 2 arguments
+//!   |       expected 1 argument
+//! ```
+//!
+//! This error means that one or more preconditions were [`assure`d](attr.assure.html) for a
+//! function that does not have any preconditions.
+//!
+//! To fix this error, either [add the `assure`d preconditions as preconditions to the
+//! function](attr.pre.html) or remove the `assure` attribute, if you added it in error.
+//!
 //! # Wording of preconditions
 //!
 //! While you can write any text you like in a [custom
