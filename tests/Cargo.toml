@@ -1,7 +1,7 @@
 [package]
 name = "pre-tests"
 version = "0.0.0"
-authors = ["aticu <15schnic@gmail.com>"]
+authors = ["Niclas Schwarzlose <15schnic@gmail.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 publish = false
