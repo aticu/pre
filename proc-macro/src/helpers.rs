@@ -63,7 +63,13 @@ pub(crate) fn visit_matching_attrs_parsed<ParsedAttr: Parse>(
     while i < attributes.len() {
         if filter(&mut attributes[i]) {
             let attr = attributes.remove(i);
-            let span = attr.span();
+            // This should never fail on nightly, where joining is supported.
+            // On stable, it'll use the better `bracket_token` span instead of the default `#` span
+            // returned by `attr.span()`.
+            let span = attr
+                .span()
+                .join(attr.bracket_token.span)
+                .unwrap_or_else(|| attr.bracket_token.span);
 
             span_of_all = Some(match span_of_all.take() {
                 Some(old_span) => old_span.join(span).unwrap_or_else(|| span),

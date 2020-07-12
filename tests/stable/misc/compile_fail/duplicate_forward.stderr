@@ -2,7 +2,7 @@ error: duplicate `forward` attribute
 
   = help: there can be just one location, try removing the wrong one
 
-  --> $DIR/duplicate_forward.rs:22:5
+  --> $DIR/duplicate_forward.rs:22:6
    |
 22 |     #[forward(other_nested)]
-   |     ^
+   |      ^^^^^^^^^^^^^^^^^^^^^^^

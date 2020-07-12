@@ -9,10 +9,12 @@ error: cannot replace `b` in this path
    |     ^^^^^^^^^
 
 error[E0574]: expected struct, variant or union type, found function `a::d::foo`
-  --> $DIR/forward_failed_replace.rs:22:5
+  --> $DIR/forward_failed_replace.rs:21:6
    |
-22 |     a::d::foo();
-   |     ^^^^^^^^^ not a struct, variant or union type
+21 |       #[assure("is foo", reason = "foo is always foo")]
+   |  ______^
+22 | |     a::d::foo();
+   | |_____^ not a struct, variant or union type
    |
 help: possible better candidate is found in another module, you can import it into scope
    |
@@ -25,7 +27,8 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 5  |           pub(crate) fn foo() {}
    |           ------------------- defined here
 ...
-21 | /     #[assure("is foo", reason = "foo is always foo")]
+21 |       #[assure("is foo", reason = "foo is always foo")]
+   |  ______-
 22 | |     a::d::foo();
    | |     -^^^^^^^^
    | |     |

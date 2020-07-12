@@ -1,18 +1,16 @@
 error[E0574]: expected struct, variant or union type, found function `foo`
- --> $DIR/undefined_precondition.rs:8:5
+ --> $DIR/undefined_precondition.rs:7:6
   |
-8 |     foo()
-  |     ^^^ not a struct, variant or union type
+7 |     #[assure("is bar", reason = "foo is bar")]
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a struct, variant or union type
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
  --> $DIR/undefined_precondition.rs:8:5
   |
-3 |   fn foo() {}
-  |   -------- defined here
+3 | fn foo() {}
+  | -------- defined here
 ...
-7 | /     #[assure("is bar", reason = "foo is bar")]
-8 | |     foo()
-  | |     ^^-
-  | |_____|_|
-  |       | supplied 1 argument
-  |       expected 0 arguments
+7 |     #[assure("is bar", reason = "foo is bar")]
+  |      ----------------------------------------- supplied 1 argument
+8 |     foo()
+  |     ^^^ expected 0 arguments

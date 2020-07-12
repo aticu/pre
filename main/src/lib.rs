@@ -260,10 +260,14 @@
 //! **stable compiler error**
 //! ```text
 //! error[E0063]: missing field `_boolean_x_20_3c_2042_2e1` in initializer of `foo`
-//!   --> src/main.rs:13:5
+//!   --> src/main.rs:9:6
 //!    |
-//! 13 |     foo(42.0);
-//!    |     ^^^ missing `_boolean_x_20_3c_2042_2e1`
+//! 9  |       #[assure(
+//!    |  ______^
+//! 10 | |         x > 41.9,
+//! 11 | |         reason = "42.0 > 41.9"
+//! 12 | |     )]
+//!    | |______^ missing `_boolean_x_20_3c_2042_2e1`
 //! ```
 //!
 //! This error means that some, but not all, preconditions were [`assure`d](attr.assure.html) for a
@@ -298,10 +302,14 @@
 //! **stable compiler error**
 //! ```text
 //! error[E0574]: expected struct, variant or union type, found function `foo`
-//!   --> src/main.rs:11:5
+//!   --> src/main.rs:7:6
 //!    |
-//! 11 |     foo(42.0);
-//!    |     ^^^ not a struct, variant or union type
+//! 7  |       #[assure(
+//!    |  ______^
+//! 8  | |         x > 41.9,
+//! 9  | |         reason = "42.0 > 41.9"
+//! 10 | |     )]
+//!    | |______^ not a struct, variant or union type
 //!
 //! error[E0061]: this function takes 1 argument but 2 arguments were supplied
 //!   --> src/main.rs:11:5
@@ -309,14 +317,15 @@
 //! 3  |   fn foo(x: f32) {}
 //!    |   -------------- defined here
 //! ...
-//! 7  | /     #[assure(
+//! 7  |       #[assure(
+//!    |  ______-
 //! 8  | |         x > 41.9,
 //! 9  | |         reason = "42.0 > 41.9"
 //! 10 | |     )]
-//! 11 | |     foo(42.0);
-//!    | |     ^^- ----
-//!    | |_____|_|
-//!    |       | supplied 2 arguments
+//!    | |______- supplied 2 arguments
+//! 11 |       foo(42.0);
+//!    |       ^^^ ----
+//!    |       |
 //!    |       expected 1 argument
 //! ```
 //!
