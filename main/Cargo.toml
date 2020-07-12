@@ -3,12 +3,15 @@ name = "pre"
 version = "0.1.0"
 authors = ["Niclas Schwarzlose <15schnic@gmail.com>"]
 license = "MIT OR Apache-2.0"
+description = "Compile-time assistance for working with unsafe code."
+repository = "https://github.com/aticu/pre"
+keywords = ["unsafe", "safety", "pre", "assure", "attribute", "annotation", "compile-time", "zero-cost", "no_std", "proc-macro"]
+categories = ["development-tools", "no-std", "rust-patterns"]
+readme = "../README.md"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-pre-proc-macro = { path = "../proc-macro" }
+pre-proc-macro = { version = "0.1", path = "../proc-macro" }
 cfg-if = "0.1"
 
 [build-dependencies]
