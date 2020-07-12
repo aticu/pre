@@ -196,6 +196,12 @@ pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, sp
 
     if let Some(last_path_segment) = path.path.segments.last_mut() {
         last_path_segment.arguments = PathArguments::None;
+
+        // Use the precondition span somewhere in the path.
+        // This should improve the error message when no preconditions are present at the
+        // definition, but some were `assure`d.
+        // It should show the preconditions in that case (possibly in addition to the call).
+        last_path_segment.ident.set_span(span);
     }
 
     let mut preconditions_rendered = TokenStream::new();
