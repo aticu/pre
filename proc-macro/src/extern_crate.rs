@@ -59,13 +59,18 @@ use std::fmt;
 use syn::{
     braced,
     parse::{Parse, ParseStream},
+    parse2,
     spanned::Spanned,
     token::Brace,
     Attribute, FnArg, ForeignItemFn, Ident, ItemUse, Path, PathArguments, PathSegment, Token,
     Visibility,
 };
 
-use crate::{documentation::generate_module_docs, helpers::CRATE_NAME};
+use crate::{
+    documentation::generate_module_docs,
+    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized, CRATE_NAME},
+    pre_attr::PreAttr,
+};
 
 pub(crate) use impl_block::{impl_block_stub_name, ImplBlock};
 
@@ -212,9 +217,28 @@ impl Module {
             });
         }
 
-        let docs = generate_module_docs(self, &path);
-        tokens.append_all(quote! { #docs });
-        tokens.append_all(&self.attrs);
+        let mut attrs = self.attrs.clone();
+        let mut render_docs = true;
+        visit_matching_attrs_parsed(
+            &mut attrs,
+            |attr| {
+                is_attr("pre", attr)
+                    && match parse2(attr.tokens.clone()) {
+                        Ok(Parenthesized {
+                            content: PreAttr::NoDoc(_),
+                            ..
+                        }) => true,
+                        _ => false,
+                    }
+            },
+            |_: Parenthesized<PreAttr>, _| render_docs = false,
+        );
+
+        if render_docs {
+            let docs = generate_module_docs(self, &path);
+            tokens.append_all(quote! { #docs });
+        }
+        tokens.append_all(attrs);
 
         let visibility = if let Some(visibility) = visibility {
             // We're in a recursive call.
