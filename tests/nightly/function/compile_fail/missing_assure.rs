@@ -1,9 +1,9 @@
 use pre::pre;
 
 #[pre("is bar")]
-fn foo() {}
+unsafe fn foo() {}
 
 #[pre]
 fn main() {
-    foo()
+    unsafe { foo() }
 }
