@@ -476,6 +476,7 @@
 #![allow(clippy::needless_doctest_main)]
 #![cfg_attr(nightly, feature(const_generics))]
 #![cfg_attr(nightly, allow(incomplete_features))]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 /// Specify preconditions on functions and check that they are assured correctly for calls.
 ///
@@ -993,6 +994,32 @@ pub use pre_proc_macro::forward;
 /// You can think of every item in the contained module having `pub` visibility (though in practice
 /// it's slightly more complicated).
 pub use pre_proc_macro::extern_crate;
+
+// Doctests don't work with this extern_crate, because there is a collision between it and `use
+// pre::pre;`. Ideally this should use `cfg(doctest)`, but that currently doesn't work
+// (https://github.com/rust-lang/rust/issues/67295). So instead testing for this crate is done
+// without the default features and this `extern crate` is only present when either of the library
+// features which need it are present.
+// The disadvantage of this is that any tests that are feature gated on either of these features
+// are not executed. This should not be a big issue however, since these features merely introduce
+// declarations, which aren't testable in the first place.
+//
+// It is needed in the first place, because `pre::extern_crate` generates code that contains `use
+// pre::pre;`.
+#[cfg(any(feature = "core", feature = "std"))]
+extern crate self as pre;
+
+#[doc(hidden)]
+#[cfg(any(feature = "core", feature = "std"))]
+pub mod libs;
+
+#[doc(inline)]
+#[cfg(feature = "core")]
+pub use libs::core;
+
+#[doc(inline)]
+#[cfg(feature = "std")]
+pub use libs::std;
 
 cfg_if::cfg_if! {
     if #[cfg(nightly)] {
