@@ -290,13 +290,24 @@ pub(crate) fn generate_module_docs(module: &Module, path: &Path) -> Attribute {
         "module"
     };
 
-    doc!(
-        docs,
-        "[`pre` definitions]({}) for the `{}` {}.",
-        PRE_LINK,
-        path_str,
-        item_name
-    );
+    if cfg!(nightly) {
+        doc!(
+            docs,
+            "[`pre` definitions]({}) for the [`{}`]({}) {}.",
+            PRE_LINK,
+            path_str,
+            path_str,
+            item_name
+        );
+    } else {
+        doc!(
+            docs,
+            "[`pre` definitions]({}) for the `{}` {}.",
+            PRE_LINK,
+            path_str,
+            item_name
+        );
+    }
 
     doc!(docs);
     doc!(
