@@ -10,6 +10,11 @@ categories = ["development-tools", "no-std", "rust-patterns"]
 readme = "../README.md"
 edition = "2018"
 
+[features]
+default = ["std", "core"]
+std = []
+core = []
+
 [dependencies]
 pre-proc-macro = { version = "0.1", path = "../proc-macro" }
 cfg-if = "0.1"
