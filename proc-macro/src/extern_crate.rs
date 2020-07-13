@@ -67,7 +67,7 @@ use syn::{
 };
 
 use crate::{
-    documentation::generate_module_docs,
+    documentation::{generate_extern_crate_fn_docs, generate_module_docs},
     helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized, CRATE_NAME},
     pre_attr::PreAttr,
 };
@@ -339,6 +339,8 @@ fn render_function(
     visibility: &TokenStream,
 ) {
     tokens.append_all(&function.attrs);
+    let doc_header = generate_extern_crate_fn_docs(path, &function.sig, function.span());
+    tokens.append_all(quote! { #doc_header });
     tokens.append_all(quote_spanned! { function.span()=> #[inline(always)] });
     tokens.append_all(visibility.clone().into_iter().map(|mut token| {
         token.set_span(function.span());

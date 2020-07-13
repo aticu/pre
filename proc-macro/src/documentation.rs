@@ -1,5 +1,6 @@
 //! Provides functions to generate documentation about the preconditions.
 
+use proc_macro2::Span;
 use quote::{quote, quote_spanned};
 use std::{env, fmt::Write};
 use syn::{
@@ -308,6 +309,62 @@ pub(crate) fn generate_module_docs(module: &Module, path: &Path) -> Attribute {
         "It acts as a drop-in replacement for the `{}` module.",
         path_str
     );
+
+    let docs = LitStr::new(&docs, span);
+    Attribute {
+        pound_token: Pound { spans: [span] },
+        style: AttrStyle::Outer,
+        bracket_token: Bracket { span },
+        path: Ident::new("doc", span).into(),
+        tokens: quote_spanned! { span=>
+            = #docs
+        },
+    }
+}
+
+/// Generates the start of the documentation for `extern_crate`-defined functions.
+pub(crate) fn generate_extern_crate_fn_docs(
+    path: &Path,
+    function: &Signature,
+    span: Span,
+) -> Attribute {
+    let mut docs = String::new();
+
+    let mut path_str = String::new();
+    for segment in path.segments.iter() {
+        doc_inline!(path_str, "{}::", segment.ident);
+    }
+    doc_inline!(path_str, "{}", function.ident);
+
+    if cfg!(nightly) {
+        doc!(docs, "[`{}`]({}) with preconditions.", path_str, path_str);
+    } else {
+        doc!(docs, "`{}` with preconditions.", path_str);
+    }
+    doc!(docs);
+    doc!(
+        docs,
+        "This function behaves exactly like `{}`, but also has preconditions checked by `pre`.",
+        path_str
+    );
+    if function.unsafety.is_some() {
+        doc!(docs);
+        if cfg!(nightly) {
+            doc!(
+                docs,
+                "**You should also read the [Safety section on the documentation of `{}`]({}#safety).**",
+                path_str,
+                path_str
+            );
+        } else {
+            doc!(
+                docs,
+                "**You should also read the Safety section on the documentation of `{}`.**",
+                path_str
+            );
+        }
+    }
+    doc!(docs);
 
     let docs = LitStr::new(&docs, span);
     Attribute {
