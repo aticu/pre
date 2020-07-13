@@ -1,12 +1,12 @@
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
- --> $DIR/missing_assure.rs:8:5
+ --> $DIR/missing_assure.rs:8:14
   |
 3 |   #[pre("is bar")]
   |  _______-
-4 | | fn foo() {}
-  | |___________- defined here
+4 | | unsafe fn foo() {}
+  | |__________________- defined here
 ...
-8 |       foo()
-  |       ^^^-- supplied 0 arguments
-  |       |
-  |       expected 1 argument
+8 |       unsafe { foo() }
+  |                ^^^-- supplied 0 arguments
+  |                |
+  |                expected 1 argument

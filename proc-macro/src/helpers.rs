@@ -9,7 +9,7 @@ use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
     token::Paren,
-    Attribute, Expr,
+    Attribute, Expr, Signature,
 };
 
 /// The reason to display in examples on how to use reasons.
@@ -128,4 +128,27 @@ pub(crate) fn attributes_of_expression(expr: &mut Expr) -> Option<&mut Vec<Attri
         MethodCall, Paren, Path, Range, Reference, Repeat, Return, Struct, Try, TryBlock, Tuple,
         Type, Unary, Unsafe, While, Yield
     )
+}
+
+/// Incorporates the given span into the signature.
+///
+/// Ideally both are shown, when the function definition is shown.
+pub(crate) fn add_span_to_signature(span: Span, signature: &mut Signature) {
+    signature.fn_token.span = signature.fn_token.span.join(span).unwrap_or_else(|| span);
+
+    if let Some(token) = &mut signature.constness {
+        token.span = token.span.join(span).unwrap_or_else(|| span);
+    }
+
+    if let Some(token) = &mut signature.asyncness {
+        token.span = token.span.join(span).unwrap_or_else(|| span);
+    }
+
+    if let Some(token) = &mut signature.unsafety {
+        token.span = token.span.join(span).unwrap_or_else(|| span);
+    }
+
+    if let Some(abi) = &mut signature.abi {
+        abi.extern_token.span = abi.extern_token.span.join(span).unwrap_or_else(|| span);
+    }
 }
