@@ -107,8 +107,12 @@ The order of the preconditions, if there are multiple, does not matter however.
 
 ## Known Limitations
 
-Unfortunately while `pre` tries to be as helpful as possible, there are some situations in
-which it is quite limited in what it can do:
+There are many subtleties involved when working with `unsafe` code. `pre` is supposed to help
+programmers know where to look, but it does not do anything beyond that. The programmer still
+has to manually check all the contracts of the `unsafe` code. Therefore even when using `pre`
+you should still **always check the "Safety" section of the documentation**.
+
+There are also some technical limitations to that `pre` can do:
 
 - There is more than one form of `unsafe` code. `pre` currently exclusively focuses on `unsafe`
   functions.
