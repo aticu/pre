@@ -62,6 +62,29 @@ macro_rules! define_libs {
 
 define_libs! {
     core {
+        mod mem {
+            impl<T> ManuallyDrop<T> {
+                #[pre("this `ManuallyDrop` is not used again after this call")]
+                unsafe fn take(slot: &mut ManuallyDrop<T>) -> T;
+            }
+
+            impl<T: ?Sized> ManuallyDrop<T> {
+                #[pre("this `ManuallyDrop` is not used again after this call")]
+                unsafe fn drop(slot: &mut ManuallyDrop<T>);
+            }
+
+            #[pre("I have read and understood https://doc.rust-lang.org/nightly/nomicon/transmutes.html")]
+            unsafe fn transmute_copy<T, U>(src: &T) -> U;
+
+            #[pre("an all-zero byte-pattern is a valid value of `T`")]
+            unsafe fn zeroed<T>() -> T;
+
+            impl<T> MaybeUninit<T> {
+                #[pre("the `MaybeUninit` contains a fully initialized, valid value of `T`")]
+                unsafe fn assume_init(self) -> T;
+            }
+        }
+
         mod ptr {
             impl<T: ?Sized> NonNull<T> {
                 #[pre(!ptr.is_null())]
