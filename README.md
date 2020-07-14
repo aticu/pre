@@ -1,5 +1,12 @@
 # pre
 
+-------
+
+[![Test status](https://github.com/aticu/pre/workflows/Tests/badge.svg)](https://github.com/aticu/pre/actions?query=branch%3Amaster)
+[![Latest version](http://img.shields.io/crates/v/pre.svg)](https://crates.io/crates/pre)
+[![Documentation](https://docs.rs/pre/badge.svg)](https://docs.rs/pre)
+![License](https://img.shields.io/crates/l/pre.svg)
+
 pre is a [Rust](https://www.rust-lang.org/) library to help programmers correctly uphold preconditions for function calls.
 It is mostly intended for use with `unsafe` functions, as they have preconditions that cannot be checked at compile-time.
 
