@@ -201,7 +201,11 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
                     function.block.stmts.insert(
                         0,
                         parse2(quote_spanned! { expr.span()=>
-                            debug_assert!(#expr);
+                            ::core::debug_assert!(
+                                #expr,
+                                "boolean precondition was wrongly assured: `{}`",
+                                ::core::stringify!(#expr)
+                            );
                         })
                         .expect("valid statement"),
                     );
