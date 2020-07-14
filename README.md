@@ -1,6 +1,6 @@
 # pre
 
-`pre` is a [Rust](https://www.rust-lang.org/) library to help programmers correctly uphold preconditions for function calls.
+pre is a [Rust](https://www.rust-lang.org/) library to help programmers correctly uphold preconditions for function calls.
 It is mostly intended for use with `unsafe` functions, as they have preconditions that cannot be checked at compile-time.
 
 ## Motivation
@@ -60,7 +60,7 @@ checks. They are a zero-cost abstraction.**
 
 ## Usage
 
-The basic usage for the `pre` crate looks like this:
+The basic usage for the pre crate looks like this:
 
 ```rust
 use pre::pre;
@@ -107,16 +107,16 @@ The order of the preconditions, if there are multiple, does not matter however.
 
 ## Known Limitations
 
-There are many subtleties involved when working with `unsafe` code. `pre` is supposed to help
+There are many subtleties involved when working with `unsafe` code. pre is supposed to help
 programmers know where to look, but it does not do anything beyond that. The programmer still
-has to manually check all the contracts of the `unsafe` code. Therefore even when using `pre`
+has to manually check all the contracts of the `unsafe` code. Therefore even when using pre
 you should still **always check the "Safety" section of the documentation**.
 
-There are also some technical limitations to that `pre` can do:
+There are also some technical limitations to that pre can do:
 
-- There is more than one form of `unsafe` code. `pre` currently exclusively focuses on `unsafe`
+- There is more than one form of `unsafe` code. pre currently exclusively focuses on `unsafe`
   functions.
-- While `pre` does work on the stable compiler, there are quite a few things that only work
+- While pre does work on the stable compiler, there are quite a few things that only work
   when using the nightly compiler.
 
   These are the main differences between the nightly version and the stable version (there are
@@ -125,10 +125,10 @@ There are also some technical limitations to that `pre` can do:
 
       This does not apply to `impl` blocks inside of an `extern_crate` annotated module. These
       have their own limitations though (see below).
-    - Warnings from `pre` are only possible on nightly.
+    - Warnings from pre are only possible on nightly.
     - Errors can reference multiple locations providing better suggestions and messages on
       nightly.
-- Since `pre` works by adding an additional argument to a function, it changes the function
+- Since pre works by adding an additional argument to a function, it changes the function
   signature. That won't make a difference in many cases, but if you use function pointers or
   pass a function as an argument, it will have a different type from what it appears to be.
 - Because attribute macros are not supported for expressions and statements on the current
@@ -152,9 +152,9 @@ There are also some technical limitations to that `pre` can do:
 
 ## Understanding the error messages
 
-`pre` tries to be as helpful as possible in the error messages it gives. Unfortunately in some
-cases `pre` does not have enough information to generate an error by itself, but has to rely on
-rustc to do so later in the compilation. `pre` has very limited control over what these
+pre tries to be as helpful as possible in the error messages it gives. Unfortunately in some
+cases pre does not have enough information to generate an error by itself, but has to rely on
+rustc to do so later in the compilation. pre has very limited control over what these
 messages look like.
 
 If you have trouble understanding these error messages, here is a little
@@ -181,7 +181,7 @@ This error means that the function has preconditions, but they are not
 [`assure`d](https://docs.rs/pre/0.1.0/pre/attr.assure.html).
 
 To fix this error, find out what preconditions for the function are and whether they hold.
-Once you're convinced that they hold, you can `assure` that to `pre` with an [`assure`
+Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
 attribute](https://docs.rs/pre/0.1.0/pre/attr.assure.html) and explain in the `reason`,
 why you're sure that they hold. You should be able to find the function preconditions in the
 documentation for the function.
@@ -259,7 +259,7 @@ This error means that some, but not all, preconditions were
 [`assure`d](https://docs.rs/pre/0.1.0/pre/attr.assure.html) for a call.
 
 To fix this error, find out what preconditions you didn't consider yet and check whether they
-hold. Once you're convinced that they hold, you can `assure` that to `pre` with an [`assure`
+hold. Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
 attribute](https://docs.rs/pre/0.1.0/pre/attr.assure.html) and explain in the `reason`, why
 you're sure that they hold. You should be able to find the function preconditions in the
 documentation for the function.
