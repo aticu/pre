@@ -1,7 +1,5 @@
 # pre
 
--------
-
 [![Test status](https://github.com/aticu/pre/workflows/Tests/badge.svg)](https://github.com/aticu/pre/actions?query=branch%3Amaster)
 [![Latest version](http://img.shields.io/crates/v/pre.svg)](https://crates.io/crates/pre)
 [![Documentation](https://docs.rs/pre/badge.svg)](https://docs.rs/pre)
