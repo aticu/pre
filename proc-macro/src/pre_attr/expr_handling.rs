@@ -1,6 +1,7 @@
 //! Handles rendering of expressions and descending into nested expressions.
 
-use proc_macro_error::emit_warning;
+use proc_macro2::Span;
+use proc_macro_error::emit_error;
 use std::convert::TryInto;
 use syn::{spanned::Spanned, Block, Expr, Local, Stmt};
 
@@ -9,7 +10,7 @@ use crate::call_handling::{render_call, CallAttributes};
 /// Renders the contained call in the given expression.
 ///
 /// This only works, if the call can be unambiguosly determined.
-/// Otherwise warnings are printed.
+/// Otherwise errors are printed.
 pub(crate) fn render_expr(expr: &mut Expr, attrs: CallAttributes) {
     if let Some(expr) = extract_call_expr(expr) {
         let call = expr
@@ -19,15 +20,20 @@ pub(crate) fn render_expr(expr: &mut Expr, attrs: CallAttributes) {
 
         *expr = render_call(attrs, call);
     } else {
+        let emit_err = |span: Span| {
+            emit_error!(
+                span,
+                "could not find an unambiguos call to apply this to";
+                help = "try moving it closer to the call it should apply to"
+            )
+        };
+
         if let Some(forward) = attrs.forward {
-            emit_warning!(forward.span(), "this is ignored for non-call expressions");
+            emit_err(forward.span());
         }
 
         for assure_attribute in attrs.assure_attributes {
-            emit_warning!(
-                assure_attribute.span(),
-                "this is ignored for non-call expressions"
-            );
+            emit_err(assure_attribute.span());
         }
     }
 }
