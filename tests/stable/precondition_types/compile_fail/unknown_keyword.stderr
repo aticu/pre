@@ -1,0 +1,8 @@
+error: keyword `unknown_keyword` is not recognized by pre
+
+  = help: if you wanted to use a boolean expression, try `unknown_keyword == true`
+
+ --> $DIR/unknown_keyword.rs:3:7
+  |
+3 | #[pre(unknown_keyword)]
+  |       ^^^^^^^^^^^^^^^

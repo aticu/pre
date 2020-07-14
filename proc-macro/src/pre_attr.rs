@@ -166,7 +166,21 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
         PreAttr::Empty => (),
         PreAttr::NoDoc(_) => render_docs = false,
         PreAttr::NoDebugAssert(_) => debug_assert = false,
-        PreAttr::Precondition(precondition) => preconditions.push(precondition),
+        PreAttr::Precondition(precondition) => {
+            if let Precondition::Boolean(boolean_expr) = &precondition {
+                if let Expr::Path(p) = &**boolean_expr {
+                    if let (None, Some(ident)) = (&p.qself, p.path.get_ident()) {
+                        emit_error!(
+                            ident.span(),
+                            "keyword `{}` is not recognized by pre", ident;
+                            help = "if you wanted to use a boolean expression, try `{} == true`",
+                            ident
+                        );
+                    }
+                }
+            }
+            preconditions.push(precondition)
+        }
     };
 
     if let Some(first_attr) = first_attr {
