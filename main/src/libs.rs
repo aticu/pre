@@ -74,6 +74,7 @@ define_libs! {
             #[pre("`dst` is valid for `count * size_of::<T>()` bytes")]
             #[pre("`src` is properly aligned")]
             #[pre("`dst` is properly aligned")]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
             unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
             #[pre(valid_ptr(src, r))]
@@ -83,25 +84,30 @@ define_libs! {
             #[pre("`src` is properly aligned")]
             #[pre("`dst` is properly aligned")]
             #[pre("the memory regions of size `count * size_of::<T>` pointed to by `src` and `dst` do not overlap")]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
             unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
             #[pre(valid_ptr(to_drop, r+w))]
             #[pre("`to_drop` is properly aligned")]
             #[pre("`to_drop` points to a value that is valid for dropping")]
+            #[pre("`T` is `Copy` or the value at `*to_drop` isn't used after this call")]
             unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T);
 
             #[pre(valid_ptr(src, r))]
             #[pre("`src` is properly aligned")]
             #[pre("`src` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*src` isn't used after this call")]
             unsafe fn read<T>(src: *const T) -> T;
 
             #[pre(valid_ptr(src, r))]
             #[pre("`src` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*src` isn't used after this call")]
             unsafe fn read_unaligned<T>(src: *const T) -> T;
 
             #[pre(valid_ptr(src, r))]
             #[pre("`src` is properly aligned")]
             #[pre("`src` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*src` isn't used after this call")]
             unsafe fn read_volatile<T>(src: *const T) -> T;
 
             #[pre(valid_ptr(dst, r+w))]
@@ -131,6 +137,7 @@ define_libs! {
             #[pre(valid_ptr(dst, w))]
             #[pre("`dst` is valid for `count * size_of::<T>()` bytes")]
             #[pre("`dst` is properly aligned")]
+            #[pre("a valid value of `T` is written to `*dst` or `*dst` is never used")]
             unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
             #[pre(valid_ptr(dst, w))]
