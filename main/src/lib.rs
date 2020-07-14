@@ -1,4 +1,4 @@
-//! `pre` is a library to help programmers correctly uphold preconditions for function calls.
+//! pre is a library to help programmers correctly uphold preconditions for function calls.
 //!
 //! # Motivation
 //!
@@ -58,7 +58,7 @@
 //!
 //! # Usage
 //!
-//! The basic usage for the `pre` crate looks like this:
+//! The basic usage for the pre crate looks like this:
 //!
 //! ```rust
 //! use pre::pre;
@@ -103,16 +103,16 @@
 //!
 //! # Known Limitations
 //!
-//! There are many subtleties involved when working with `unsafe` code. `pre` is supposed to help
+//! There are many subtleties involved when working with `unsafe` code. pre is supposed to help
 //! programmers know where to look, but it does not do anything beyond that. The programmer still
-//! has to manually check all the contracts of the `unsafe` code. Therefore even when using `pre`
+//! has to manually check all the contracts of the `unsafe` code. Therefore even when using pre
 //! you should still **always check the "Safety" section of the documentation**.
 //!
-//! There are also some technical limitations to that `pre` can do:
+//! There are also some technical limitations to that pre can do:
 //!
-//! - There is more than one form of `unsafe` code. `pre` currently exclusively focuses on `unsafe`
+//! - There is more than one form of `unsafe` code. pre currently exclusively focuses on `unsafe`
 //!   functions.
-//! - While `pre` does work on the stable compiler, there are quite a few things that only work
+//! - While pre does work on the stable compiler, there are quite a few things that only work
 //!   when using the nightly compiler.
 //!
 //!   These are the main differences between the nightly version and the stable version (there are
@@ -121,10 +121,10 @@
 //!
 //!       This does not apply to `impl` blocks inside of an `extern_crate` annotated module. These
 //!       have their own limitations though (see below).
-//!     - Warnings from `pre` are only possible on nightly.
+//!     - Warnings from pre are only possible on nightly.
 //!     - Errors can reference multiple locations providing better suggestions and messages on
 //!       nightly.
-//! - Since `pre` works by adding an additional argument to a function, it changes the function
+//! - Since pre works by adding an additional argument to a function, it changes the function
 //!   signature. That won't make a difference in many cases, but if you use function pointers or
 //!   pass a function as an argument, it will have a different type from what it appears to be.
 //! - Because attribute macros are not supported for expressions and statements on the current
@@ -173,9 +173,9 @@
 //!
 //! # Understanding the error messages
 //!
-//! `pre` tries to be as helpful as possible in the error messages it gives. Unfortunately in some
-//! cases `pre` does not have enough information to generate an error by itself, but has to rely on
-//! rustc to do so later in the compilation. `pre` has very limited control over what these
+//! pre tries to be as helpful as possible in the error messages it gives. Unfortunately in some
+//! cases pre does not have enough information to generate an error by itself, but has to rely on
+//! rustc to do so later in the compilation. pre has very limited control over what these
 //! messages look like.
 //!
 //! If you have trouble understanding these error messages, here is a little
@@ -202,7 +202,7 @@
 //! [`assure`d](attr.assure.html).
 //!
 //! To fix this error, find out what preconditions for the function are and whether they hold.
-//! Once you're convinced that they hold, you can `assure` that to `pre` with an [`assure`
+//! Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
 //! attribute](attr.assure.html) and explain in the `reason`, why you're sure that they hold.
 //! You should be able to find the function preconditions in the documentation for the function.
 //!
@@ -278,7 +278,7 @@
 //! call.
 //!
 //! To fix this error, find out what preconditions you didn't consider yet and check whether they
-//! hold. Once you're convinced that they hold, you can `assure` that to `pre` with an [`assure`
+//! hold. Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
 //! attribute](attr.assure.html) and explain in the `reason`, why you're sure that they hold.
 //! You should be able to find the function preconditions in the documentation for the function.
 //!
@@ -354,9 +354,9 @@
 //!
 //! > "the elements at `old_len..new_len` **are** initialized"
 //!
-//! # Changing an existing code base to use `pre`
+//! # Changing an existing code base to use pre
 //!
-//! One problem when changing a code base to use `pre` is that once a function has preconditions,
+//! One problem when changing a code base to use pre is that once a function has preconditions,
 //! it needs them `assure`d everywhere.
 //! For functions that are used a lot, it can be a big task to check and `assure` all call sites at
 //! once.
@@ -367,7 +367,7 @@
 //! ## `extern_crate` for local items
 //!
 //! Suppose you have a function `some_module::some_fn` with a lot of uses that you want to change
-//! to use `pre` without changing all call sites at once.
+//! to use pre without changing all call sites at once.
 //!
 //! ```rust
 //! mod some_module {
@@ -468,7 +468,7 @@
 //! Using `"TODO"` as a reason in an `assure` attribute will issue a warning, to remind you of
 //! checking why you believe the precondition holds.
 //!
-//! When changing a function to use `pre`, you can simply `assure` all its preconditions at all
+//! When changing a function to use pre, you can simply `assure` all its preconditions at all
 //! call sites with `"TODO"` as the reason.
 //! **Of course this does not make the use of the function any safer by itself.**
 //! However it allows everything to compile again and have the compiler warnings remind you what
@@ -611,7 +611,7 @@
 ///    #
 ///    #[pre(no_doc)]
 ///    #[pre("some precondition")]
-///    fn foo() {} // foo will not have any documentation generated by `pre`.
+///    fn foo() {} // foo will not have any documentation generated by pre.
 ///    ```
 /// 4. Disable debug assertions for boolean preconditions.
 ///    ```rust
@@ -619,7 +619,7 @@
 ///    #
 ///    #[pre(no_debug_assert)]
 ///    #[pre(old_val < new_val)]
-///    fn foo() {} // foo will not have any `debug_assert`s generated by `pre`.
+///    fn foo() {} // foo will not have any `debug_assert`s generated by pre.
 ///    ```
 ///
 /// # Checking functionality
@@ -690,7 +690,7 @@ pub use pre_proc_macro::pre;
 /// attribute.
 ///
 /// There are no guarantees that a precondition holds, other than the fact that the programmer
-/// promises that it does. The burden is still on the programmer in this case. `pre` only makes
+/// promises that it does. The burden is still on the programmer in this case. pre only makes
 /// sure that the programmer cannot forget that a precondition exists and that no precondition is
 /// changed without the programmer noticing.
 ///
@@ -924,8 +924,8 @@ pub use pre_proc_macro::forward;
 
 /// Provide preconditions for items in a different crate.
 ///
-/// This attribute can be used when a library has documented preconditions without using `pre` and
-/// you want those preconditions to be checked by `pre`.
+/// This attribute can be used when a library has documented preconditions without using pre and
+/// you want those preconditions to be checked by pre.
 ///
 /// It works by specifying an outline of the library as a module.
 /// Every function that should have preconditions added is simply referenced by it's signature.
