@@ -34,7 +34,11 @@
 //!     #[cfg(not(doc))]
 //!     _: ::core::marker::PhantomData<(::pre::BooleanCondition<"some_val > 42.0">,)>,
 //! ) -> f32 {
-//!     debug_assert!(some_val > 42.0);
+//!     ::core::debug_assert!(
+//!         some_val > 42.0
+//!         "boolean precondition was wrongly assured: `{}`",
+//!         ::core::stringify!(some_val > 42.0)
+//!     );
 //!     assert!(some_val > 42.0);
 //!
 //!     some_val

@@ -44,7 +44,11 @@
 //!
 //! #[doc = "..."]
 //! fn has_preconditions(some_val: f32, #[cfg(not(doc))] _: has_preconditions) -> f32 {
-//!     debug_assert!(some_val > 42.0);
+//!     ::core::debug_assert!(
+//!         some_val > 42.0
+//!         "boolean precondition was wrongly assured: `{}`",
+//!         ::core::stringify!(some_val > 42.0)
+//!     );
 //!     assert!(some_val > 42.0);
 //!
 //!     some_val
