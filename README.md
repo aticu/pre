@@ -330,7 +330,7 @@ if you added it in error.
 
 ## Background
 
-This library is developed for my bachelor's thesis titled "Implementierung und Evaluation von Vorbedinungskommunikation für unsafe Code in Rust" (in German).
+This library is developed for my bachelor's thesis titled "Implementierung und Evaluation von Vorbedingungskommunikation für unsafe Code in Rust" (in German).
 The second part of the thesis focuses on evaluating whether such a library is useful and whether the benefits are worth the additional effort.
 
 I'd be very grateful if you open an issue with any feedback that you have on this library, as that helps my evaluation efforts.
