@@ -1,8 +1,12 @@
 # pre
 
+[docs_master_badge]: https://img.shields.io/badge/docs.rs-master-green
+[docs_master_url]: https://aticu.github.io/pre
+
 [![Test status](https://github.com/aticu/pre/workflows/Tests/badge.svg)](https://github.com/aticu/pre/actions?query=branch%3Amaster)
 [![Latest version](http://img.shields.io/crates/v/pre.svg)](https://crates.io/crates/pre)
 [![Documentation](https://docs.rs/pre/badge.svg)](https://docs.rs/pre)
+[![docs_master_badge]][docs_master_url]
 ![License](https://img.shields.io/crates/l/pre.svg)
 
 pre is a [Rust](https://www.rust-lang.org/) library to help programmers correctly uphold preconditions for function calls.
@@ -59,7 +63,7 @@ and the code will not compile. This should protect against problems 2, 3 and 5 f
 Because a reason is required at the function call site, problem 6 is at least partially guarded
 against, though programmers could still choose to not put too much effort into the reason.
 
-The signature of the functions is changed by adding a single *zero-sized* parameter.
+The signature of the functions is changed by adding a single _zero-sized_ parameter.
 **This means that when compiled using the release mode, there is no run-time cost for these
 checks. They are a zero-cost abstraction.**
 
@@ -126,13 +130,16 @@ There are also some technical limitations to that pre can do:
 
   These are the main differences between the nightly version and the stable version (there are
   other minor ones):
-    - **Preconditions on functions in `impl` blocks only work on nightly.**
 
-      This does not apply to `impl` blocks inside of an `extern_crate` annotated module. These
-      have their own limitations though (see below).
-    - Warnings from pre are only possible on nightly.
-    - Errors can reference multiple locations providing better suggestions and messages on
-      nightly.
+  - **Preconditions on functions in `impl` blocks only work on nightly.**
+
+    This does not apply to `impl` blocks inside of an `extern_crate` annotated module. These
+    have their own limitations though (see below).
+
+  - Warnings from pre are only possible on nightly.
+  - Errors can reference multiple locations providing better suggestions and messages on
+    nightly.
+
 - Since pre works by adding an additional argument to a function, it changes the function
   signature. That won't make a difference in many cases, but if you use function pointers or
   pass a function as an argument, it will have a different type from what it appears to be.
@@ -143,17 +150,17 @@ There are also some technical limitations to that pre can do:
 - There are multiple limitations for functions and methods defined in a module which is
   annotated with the [`extern_crate`
   attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) or has a parent that is:
-    - Calls to such functions/methods call the original function/method for the original type,
-      which means that preconditions are not taken into consideration. Use the [`forward`
-      attribute](https://docs.rs/pre/0.1.0/pre/attr.forward.html#impl-call) to check the
-      preconditions on these calls.
-    - Because of the way they are implemented, it's currently possible for the name of these
-      functions to clash with names in their surrounding module.  This is unlikely to occur in
-      regular usage, but possible. If you encounter such a case, please open an issue
-      describing the problem.
-    - Currently all type information for the `impl` block is discarded. This means that
-      multiple non-overlapping (in the type system sense) `impl` blocks can overlap in an
-      `extern_crate` annotated module.
+  - Calls to such functions/methods call the original function/method for the original type,
+    which means that preconditions are not taken into consideration. Use the [`forward`
+    attribute](https://docs.rs/pre/0.1.0/pre/attr.forward.html#impl-call) to check the
+    preconditions on these calls.
+  - Because of the way they are implemented, it's currently possible for the name of these
+    functions to clash with names in their surrounding module. This is unlikely to occur in
+    regular usage, but possible. If you encounter such a case, please open an issue
+    describing the problem.
+  - Currently all type information for the `impl` block is discarded. This means that
+    multiple non-overlapping (in the type system sense) `impl` blocks can overlap in an
+    `extern_crate` annotated module.
 
 ## Understanding the error messages
 
@@ -194,6 +201,7 @@ documentation for the function.
 ---
 
 **nightly compiler error**
+
 ```text
 error[E0308]: mismatched types
   --> src/main.rs:8:5
@@ -209,6 +217,7 @@ error[E0308]: mismatched types
 ```
 
 **stable compiler error**
+
 ```text
 error[E0560]: struct `foo` has no field named `_boolean_x_20_3e_2041_2e0`
  --> src/main.rs:9:9
@@ -233,6 +242,7 @@ You should be able to find the function preconditions in the documentation for t
 ---
 
 **nightly compiler error**
+
 ```text
 error[E0308]: mismatched types
   --> src/main.rs:9:5
@@ -248,6 +258,7 @@ error[E0308]: mismatched types
 ```
 
 **stable compiler error**
+
 ```text
 error[E0063]: missing field `_boolean_x_20_3c_2042_2e1` in initializer of `foo`
   --> src/main.rs:9:6
@@ -272,6 +283,7 @@ documentation for the function.
 ---
 
 **nightly compiler error**
+
 ```text
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> src/main.rs:11:5
@@ -291,6 +303,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
 ```
 
 **stable compiler error**
+
 ```text
 error[E0574]: expected struct, variant or union type, found function `foo`
   --> src/main.rs:7:6
