@@ -16,6 +16,7 @@ mod custom_keywords {
     use syn::custom_keyword;
 
     custom_keyword!(valid_ptr);
+    custom_keyword!(proper_align);
     custom_keyword!(r);
     custom_keyword!(w);
 }
@@ -36,6 +37,14 @@ pub(crate) enum Precondition {
         /// Information on what accesses of the pointer must be valid.
         read_write: ReadWrite,
     },
+    ProperAlign {
+        /// The `proper_align` keyword.
+        proper_align_keyword: custom_keywords::proper_align,
+        /// The parentheses following the `proper_align` keyword.
+        parentheses: Paren,
+        /// The identifier of the pointer.
+        ident: Ident,
+    },
     /// An expression that should evaluate to a boolean value.
     Boolean(Box<Expr>),
     /// A custom precondition that is spelled out in a string.
@@ -48,6 +57,9 @@ impl fmt::Display for Precondition {
             Precondition::ValidPtr {
                 ident, read_write, ..
             } => write!(f, "valid_ptr({}, {})", ident.to_string(), read_write),
+            Precondition::ProperAlign { ident, .. } => {
+                write!(f, "proper_align({})", ident.to_string())
+            }
             Precondition::Boolean(expr) => write!(f, "{}", quote! { #expr }),
             Precondition::Custom(lit) => write!(f, "{:?}", lit.value()),
         }
@@ -77,6 +89,21 @@ impl Parse for Precondition {
             } else {
                 Err(content.error("unexpected token"))
             }
+        } else if input.peek(custom_keywords::proper_align) {
+            let proper_align_keyword = input.parse()?;
+            let content;
+            let parentheses = parenthesized!(content in input);
+            let ident = content.parse()?;
+
+            if content.is_empty() {
+                Ok(Precondition::ProperAlign {
+                    proper_align_keyword,
+                    parentheses,
+                    ident,
+                })
+            } else {
+                Err(content.error("unexpected token"))
+            }
         } else if input.peek(LitStr) {
             Ok(Precondition::Custom(input.parse()?))
         } else {
@@ -87,7 +114,7 @@ impl Parse for Precondition {
                 Err(mut err) => {
                     err.combine(Error::new(
                         start_span,
-                        "expected `valid_ptr`, a string literal or a boolean expression",
+                        "expected `valid_ptr`, `proper_align`, a string literal or a boolean expression",
                     ));
 
                     Err(err)
@@ -108,6 +135,14 @@ impl Spanned for Precondition {
                 .span()
                 .join(parentheses.span)
                 .unwrap_or_else(|| valid_ptr_keyword.span()),
+            Precondition::ProperAlign {
+                proper_align_keyword,
+                parentheses,
+                ..
+            } => proper_align_keyword
+                .span()
+                .join(parentheses.span)
+                .unwrap_or_else(|| proper_align_keyword.span()),
             Precondition::Boolean(expr) => expr.span(),
             Precondition::Custom(lit) => lit.span(),
         }
@@ -119,8 +154,9 @@ impl Precondition {
     fn descriminant_id(&self) -> usize {
         match self {
             Precondition::ValidPtr { .. } => 0,
-            Precondition::Boolean(_) => 1,
-            Precondition::Custom(_) => 2,
+            Precondition::ProperAlign { .. } => 1,
+            Precondition::Boolean(_) => 2,
+            Precondition::Custom(_) => 3,
         }
     }
 }
@@ -136,6 +172,14 @@ impl Ord for Precondition {
                     ident: ident_self, ..
                 },
                 Precondition::ValidPtr {
+                    ident: ident_other, ..
+                },
+            ) => ident_self.cmp(&ident_other),
+            (
+                Precondition::ProperAlign {
+                    ident: ident_self, ..
+                },
+                Precondition::ProperAlign {
                     ident: ident_other, ..
                 },
             ) => ident_self.cmp(&ident_other),
