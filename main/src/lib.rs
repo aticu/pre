@@ -1034,6 +1034,10 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         pub struct ValidPtrCondition<const PTR: &'static str, const ACCESS_TYPE: &'static str>;
 
+        /// A condition that the pointer of name `PTR` has a proper alignment for its type.
+        #[doc(hidden)]
+        pub struct ProperAlignCondition<const PTR: &'static str>;
+
         /// A boolean condition.
         #[doc(hidden)]
         pub struct BooleanCondition<const CONDITION: &'static str>;

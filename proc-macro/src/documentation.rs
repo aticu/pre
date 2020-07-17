@@ -198,6 +198,11 @@ pub(crate) fn generate_docs(
                     ident.to_string(),
                     read_write.doc_description()
                 ),
+                Precondition::ProperAlign { ident, .. } => doc!(
+                    docs,
+                    "- the pointer `{}` must have a proper alignment for its type",
+                    ident.to_string()
+                ),
                 Precondition::Boolean(expr) => doc!(docs, "- `{}`", quote! { #expr }),
                 Precondition::Custom(text) => doc!(docs, "- {}", text.value()),
             }
