@@ -170,6 +170,22 @@ define_libs! {
             #[pre("`dst` is properly aligned")]
             unsafe fn write_volatile<T>(dst: *mut T, src: T);
         }
+
+        mod slice {
+            #[pre(valid_ptr(data, r))]
+            #[pre("`data` is properly aligned")]
+            #[pre("the allocated object at `data` is valid for `len * mem::size_of::<T>()` bytes")]
+            #[pre("the memory referenced by the returned slice is not mutated for the duration of `'a`, except inside an `UnsafeCell`")]
+            #[pre(len * ::core::mem::size_of::<T>() <= isize::MAX as usize)]
+            unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T];
+
+            #[pre(valid_ptr(data, r+w))]
+            #[pre("`data` is properly aligned")]
+            #[pre("the allocated object at `data` is valid for `len * mem::size_of::<T>()` bytes")]
+            #[pre("the memory referenced by the returned slice is accessed by any pointer for the duration of `'a`, except by the returned slice")]
+            #[pre(len * ::core::mem::size_of::<T>() <= isize::MAX as usize)]
+            unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T];
+        }
     }
 
     std {
