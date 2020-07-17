@@ -175,14 +175,14 @@ define_libs! {
             #[pre(valid_ptr(data, r))]
             #[pre(proper_align(data))]
             #[pre("the allocated object at `data` is valid for `len * mem::size_of::<T>()` bytes")]
-            #[pre("the memory referenced by the returned slice is not mutated for the duration of `'a`, except inside an `UnsafeCell`")]
+            #[pre("the memory referenced by the returned slice is not mutated by any pointer for the duration of `'a`, except inside a contained `UnsafeCell`")]
             #[pre(len * ::core::mem::size_of::<T>() <= isize::MAX as usize)]
             unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T];
 
             #[pre(valid_ptr(data, r+w))]
             #[pre(proper_align(data))]
             #[pre("the allocated object at `data` is valid for `len * mem::size_of::<T>()` bytes")]
-            #[pre("the memory referenced by the returned slice is accessed by any pointer for the duration of `'a`, except by the returned slice")]
+            #[pre("the memory referenced by the returned slice is not accessed by any pointer other than the returned slice for the duration of `'a`")]
             #[pre(len * ::core::mem::size_of::<T>() <= isize::MAX as usize)]
             unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T];
         }
