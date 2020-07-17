@@ -84,6 +84,12 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
                     ::#crate_name::ValidPtrCondition::<#ident_lit, #rw_str>
                 });
             }
+            Precondition::ProperAlign { ident, .. } => {
+                let ident_lit = LitStr::new(&ident.to_string(), ident.span());
+                tokens.append_all(quote_spanned! { precondition.span()=>
+                    ::#crate_name::ProperAlignCondition::<#ident_lit>
+                });
+            }
             Precondition::Boolean(expr) => {
                 let as_str = LitStr::new(&quote! { #expr }.to_string(), precondition.span());
 
