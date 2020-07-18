@@ -8,7 +8,7 @@ use syn::{
     Attribute, Expr, LitStr, Token,
 };
 
-use self::forward::Forward;
+use self::forward::ForwardAttr;
 use crate::{
     call::Call,
     helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized, HINT_REASON},
@@ -153,7 +153,7 @@ pub(crate) struct CallAttributes {
     /// The span best representing all the attributes.
     pub(crate) span: Span,
     /// The optional `forward` attribute.
-    pub(crate) forward: Option<Forward>,
+    pub(crate) forward: Option<ForwardAttr>,
     /// The list of `assure` attributes.
     pub(crate) assure_attributes: Vec<AssureAttr>,
 }
@@ -181,7 +181,7 @@ pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<
         |attr| is_attr("forward", attr),
         |Parenthesized {
              content: mut fwd, ..
-         }: Parenthesized<Forward>,
+         }: Parenthesized<ForwardAttr>,
          span| {
             fwd.set_span(span);
 
