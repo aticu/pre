@@ -52,7 +52,7 @@ use crate::{call::Call, extern_crate::impl_block_stub_name};
 /// The content of a `forward` attribute.
 ///
 /// This specifies where the function the call should be forwarded to is located.
-pub(crate) enum Forward {
+pub(crate) enum ForwardAttr {
     /// The given path should be added before the already present path.
     ///
     /// For a method, this is equivalent to an `impl` forward attribute.
@@ -93,7 +93,7 @@ pub(crate) enum Forward {
     },
 }
 
-impl Parse for Forward {
+impl Parse for ForwardAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let impl_keyword = if input.peek(Token![impl]) {
             Some(input.parse()?)
@@ -105,13 +105,13 @@ impl Parse for Forward {
 
         Ok(if input.is_empty() {
             if let Some(impl_keyword) = impl_keyword {
-                Forward::ImplBlock {
+                ForwardAttr::ImplBlock {
                     impl_keyword,
                     path: first_path,
                     span: None,
                 }
             } else {
-                Forward::Direct {
+                ForwardAttr::Direct {
                     path: first_path,
                     span: None,
                 }
@@ -120,7 +120,7 @@ impl Parse for Forward {
             let arrow = input.parse()?;
             let second_path = input.parse()?;
 
-            Forward::Replace {
+            ForwardAttr::Replace {
                 from: first_path,
                 _arrow: arrow,
                 to: second_path,
@@ -130,11 +130,11 @@ impl Parse for Forward {
     }
 }
 
-impl Spanned for Forward {
+impl Spanned for ForwardAttr {
     fn span(&self) -> Span {
         match self {
-            Forward::Direct { path, span } => span.unwrap_or_else(|| path.span()),
-            Forward::ImplBlock {
+            ForwardAttr::Direct { path, span } => span.unwrap_or_else(|| path.span()),
+            ForwardAttr::ImplBlock {
                 impl_keyword,
                 path,
                 span,
@@ -144,14 +144,14 @@ impl Spanned for Forward {
                     .join(path.span())
                     .unwrap_or_else(|| path.span())
             }),
-            Forward::Replace { from, to, span, .. } => {
+            ForwardAttr::Replace { from, to, span, .. } => {
                 span.unwrap_or_else(|| from.span().join(to.span()).unwrap_or_else(|| to.span()))
             }
         }
     }
 }
 
-impl Forward {
+impl ForwardAttr {
     /// Updates the call to use the forwarded location.
     pub(super) fn update_call(self, mut call: Call, render: impl FnOnce(Call) -> Call) -> Expr {
         let original_call = call.clone();
@@ -172,7 +172,7 @@ impl Forward {
                 };
 
                 parse2(match self {
-                    Forward::Direct { .. } | Forward::Replace { .. } => {
+                    ForwardAttr::Direct { .. } | ForwardAttr::Replace { .. } => {
                         *fn_call.func = Expr::Path(self.construct_new_path(&fn_path));
                         let call = render(call);
 
@@ -184,7 +184,7 @@ impl Forward {
                             }
                         }
                     }
-                    Forward::ImplBlock { path, .. } => {
+                    ForwardAttr::ImplBlock { path, .. } => {
                         let fn_name = if let Some(segment) = fn_path.path.segments.last() {
                             &segment.ident
                         } else {
@@ -207,7 +207,7 @@ impl Forward {
                 .expect("valid expression")
             }
             Call::Method(method_call) => match self {
-                Forward::ImplBlock { path, .. } | Forward::Direct { path, .. } => {
+                ForwardAttr::ImplBlock { path, .. } | ForwardAttr::Direct { path, .. } => {
                     let rendered_call = render(create_empty_call(path, &method_call.method).into());
 
                     parse2(quote_spanned! { span=>
@@ -221,7 +221,7 @@ impl Forward {
                     })
                     .expect("valid expression")
                 }
-                Forward::Replace {
+                ForwardAttr::Replace {
                     ref from, ref to, ..
                 } => {
                     emit_error!(
@@ -242,15 +242,15 @@ impl Forward {
         let mut resulting_path = fn_path.clone();
 
         match self {
-            Forward::Direct { ref path, .. } => {
+            ForwardAttr::Direct { ref path, .. } => {
                 for (i, segment) in path.segments.iter().enumerate() {
                     resulting_path.path.segments.insert(i, segment.clone());
                 }
             }
-            Forward::ImplBlock { .. } => {
+            ForwardAttr::ImplBlock { .. } => {
                 unreachable!("`construct_new_path` is never called for an `impl` forward attribute")
             }
-            Forward::Replace { from, to, .. } => {
+            ForwardAttr::Replace { from, to, .. } => {
                 if !check_prefix(&from, &fn_path.path) {
                     return resulting_path;
                 }
@@ -281,9 +281,9 @@ impl Forward {
     /// Sets the span of this `forward` attribute.
     pub(crate) fn set_span(&mut self, new_span: Span) {
         match self {
-            Forward::Direct { span, .. }
-            | Forward::ImplBlock { span, .. }
-            | Forward::Replace { span, .. } => {
+            ForwardAttr::Direct { span, .. }
+            | ForwardAttr::ImplBlock { span, .. }
+            | ForwardAttr::Replace { span, .. } => {
                 span.replace(new_span);
             }
         }
