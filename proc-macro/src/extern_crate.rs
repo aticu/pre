@@ -59,7 +59,6 @@ use std::fmt;
 use syn::{
     braced,
     parse::{Parse, ParseStream},
-    parse2,
     spanned::Spanned,
     token::Brace,
     Attribute, FnArg, ForeignItemFn, Ident, ItemUse, Path, PathArguments, PathSegment, Token,
@@ -68,7 +67,7 @@ use syn::{
 
 use crate::{
     documentation::{generate_extern_crate_fn_docs, generate_module_docs},
-    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized, CRATE_NAME},
+    helpers::{visit_matching_attrs_parsed_mut, AttributeAction, CRATE_NAME},
     pre_attr::PreAttr,
 };
 
@@ -77,12 +76,12 @@ pub(crate) use impl_block::{impl_block_stub_name, ImplBlock};
 mod impl_block;
 
 /// The parsed version of the `extern_crate` attribute content.
-pub(crate) struct Attr {
+pub(crate) struct ExternCrateAttr {
     /// The path of the crate/module to which function calls will be forwarded.
     path: Path,
 }
 
-impl fmt::Display for Attr {
+impl fmt::Display for ExternCrateAttr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "#[extern_crate(")?;
 
@@ -98,9 +97,9 @@ impl fmt::Display for Attr {
     }
 }
 
-impl Parse for Attr {
+impl Parse for ExternCrateAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(Attr {
+        Ok(ExternCrateAttr {
             path: input.call(Path::parse_mod_style)?,
         })
     }
@@ -191,7 +190,7 @@ impl Parse for Module {
 
 impl Module {
     /// Renders this `extern_crate` annotated module to its final result.
-    pub(crate) fn render(&self, attr: Attr) -> TokenStream {
+    pub(crate) fn render(&self, attr: ExternCrateAttr) -> TokenStream {
         let mut tokens = TokenStream::new();
 
         self.render_inner(attr.path, &mut tokens, None, &self.ident);
@@ -219,20 +218,14 @@ impl Module {
 
         let mut attrs = self.attrs.clone();
         let mut render_docs = true;
-        visit_matching_attrs_parsed(
-            &mut attrs,
-            |attr| {
-                is_attr("pre", attr)
-                    && match parse2(attr.tokens.clone()) {
-                        Ok(Parenthesized {
-                            content: PreAttr::NoDoc(_),
-                            ..
-                        }) => true,
-                        _ => false,
-                    }
-            },
-            |_: Parenthesized<PreAttr>, _| render_docs = false,
-        );
+        visit_matching_attrs_parsed_mut(&mut attrs, "pre", |attr| match attr.content() {
+            PreAttr::NoDoc(_) => {
+                render_docs = false;
+
+                AttributeAction::Remove
+            }
+            _ => AttributeAction::Keep,
+        });
 
         if render_docs {
             let docs = generate_module_docs(self, &path);

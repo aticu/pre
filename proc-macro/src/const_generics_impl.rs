@@ -59,18 +59,18 @@ use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
 use crate::{
     call::Call,
     helpers::{add_span_to_signature, CRATE_NAME},
-    precondition::{Precondition, ReadWrite},
+    precondition::{CfgPrecondition, Precondition, ReadWrite},
 };
 
 /// Renders a precondition list to a token stream.
-fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> TokenStream {
+fn render_condition_list(mut preconditions: Vec<CfgPrecondition>, span: Span) -> TokenStream {
     preconditions.sort_unstable();
 
     let mut tokens = TokenStream::new();
     let crate_name = Ident::new(&CRATE_NAME, span);
 
     for precondition in preconditions {
-        match &precondition {
+        match precondition.precondition() {
             Precondition::ValidPtr {
                 ident, read_write, ..
             } => {
@@ -114,7 +114,7 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
 
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
-    preconditions: Vec<Precondition>,
+    preconditions: Vec<CfgPrecondition>,
     function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
@@ -138,7 +138,11 @@ pub(crate) fn render_pre(
 }
 
 /// Generates the code for the call with the precondition handling added.
-pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, span: Span) -> Call {
+pub(crate) fn render_assure(
+    preconditions: Vec<CfgPrecondition>,
+    mut call: Call,
+    span: Span,
+) -> Call {
     let preconditions = render_condition_list(preconditions, span);
 
     call.args_mut().push(

@@ -11,7 +11,7 @@ use syn::{
 use self::forward::ForwardAttr;
 use crate::{
     call::Call,
-    helpers::{is_attr, visit_matching_attrs_parsed, Parenthesized, HINT_REASON},
+    helpers::{visit_matching_attrs_parsed_mut, Attr, AttributeAction, HINT_REASON},
     precondition::Precondition,
     render_assure,
 };
@@ -35,11 +35,6 @@ pub(crate) enum AssureAttr {
         _comma: Token![,],
         /// The reason that was stated.
         reason: Reason,
-        /// The span best representing the whole attribute.
-        ///
-        /// This is only optional, because it cannot be determined while parsing.
-        /// It is filled immediately after parsing.
-        span: Option<Span>,
     },
     /// The statement written without a reason.
     ///
@@ -49,20 +44,13 @@ pub(crate) enum AssureAttr {
     WithoutReason {
         /// The precondition that was stated.
         precondition: Precondition,
-        /// The span where to place the missing reason.
-        missing_reason_span: Span,
-        /// The span best representing the whole attribute.
-        ///
-        /// This is only optional, because it cannot be determined while parsing.
-        /// It is filled immediately after parsing.
-        span: Option<Span>,
     },
 }
 
 impl From<AssureAttr> for Precondition {
     fn from(holds_statement: AssureAttr) -> Precondition {
         match holds_statement {
-            AssureAttr::WithoutReason { precondition, .. } => precondition,
+            AssureAttr::WithoutReason { precondition } => precondition,
             AssureAttr::WithReason { precondition, .. } => precondition,
         }
     }
@@ -74,17 +62,12 @@ impl Spanned for AssureAttr {
             AssureAttr::WithReason {
                 precondition,
                 reason,
-                span,
                 ..
-            } => span.unwrap_or_else(|| {
-                precondition
-                    .span()
-                    .join(reason.reason.span())
-                    .unwrap_or_else(|| precondition.span())
-            }),
-            AssureAttr::WithoutReason {
-                precondition, span, ..
-            } => span.unwrap_or_else(|| precondition.span()),
+            } => precondition
+                .span()
+                .join(reason.reason.span())
+                .unwrap_or_else(|| precondition.span()),
+            AssureAttr::WithoutReason { precondition } => precondition.span(),
         }
     }
 }
@@ -94,11 +77,7 @@ impl Parse for AssureAttr {
         let precondition = input.parse()?;
 
         if input.is_empty() {
-            Ok(AssureAttr::WithoutReason {
-                precondition,
-                missing_reason_span: input.span(),
-                span: None,
-            })
+            Ok(AssureAttr::WithoutReason { precondition })
         } else {
             let comma = input.parse()?;
             let reason = input.parse()?;
@@ -107,19 +86,7 @@ impl Parse for AssureAttr {
                 precondition,
                 _comma: comma,
                 reason,
-                span: None,
             })
-        }
-    }
-}
-
-impl AssureAttr {
-    /// Sets the span of this `assure` attribute.
-    fn set_span(&mut self, new_span: Span) {
-        match self {
-            AssureAttr::WithReason { span, .. } | AssureAttr::WithoutReason { span, .. } => {
-                span.replace(new_span);
-            }
         }
     }
 }
@@ -153,9 +120,9 @@ pub(crate) struct CallAttributes {
     /// The span best representing all the attributes.
     pub(crate) span: Span,
     /// The optional `forward` attribute.
-    pub(crate) forward: Option<ForwardAttr>,
+    pub(crate) forward: Option<Attr<ForwardAttr>>,
     /// The list of `assure` attributes.
-    pub(crate) assure_attributes: Vec<AssureAttr>,
+    pub(crate) assure_attributes: Vec<Attr<AssureAttr>>,
 }
 
 /// Removes and returns all `pre`-related call-site attributes from the given attribute list.
@@ -163,37 +130,25 @@ pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<
     let mut forward = None;
     let mut assure_attributes = Vec::new();
 
-    let preconditions_span = visit_matching_attrs_parsed(
-        attributes,
-        |attr| is_attr("assure", attr),
-        |Parenthesized {
-             content: mut assure_attribute,
-             ..
-         }: Parenthesized<AssureAttr>,
-         span| {
-            assure_attribute.set_span(span);
+    let preconditions_span = visit_matching_attrs_parsed_mut(attributes, "assure", |attr| {
+        assure_attributes.push(attr);
 
-            assure_attributes.push(assure_attribute);
-        },
-    );
-    let forward_span = visit_matching_attrs_parsed(
-        attributes,
-        |attr| is_attr("forward", attr),
-        |Parenthesized {
-             content: mut fwd, ..
-         }: Parenthesized<ForwardAttr>,
-         span| {
-            fwd.set_span(span);
+        AttributeAction::Remove
+    });
 
-            if let Some(old_forward) = forward.replace(fwd) {
-                emit_error!(
-                    span,
-                    "duplicate `forward` attribute";
-                    help = old_forward.span() => "there can be just one location, try removing the wrong one"
-                );
-            }
-        },
-    );
+    let forward_span = visit_matching_attrs_parsed_mut(attributes, "forward", |attr| {
+        let span = attr.span();
+
+        if let Some(old_forward) = forward.replace(attr) {
+            emit_error!(
+                span,
+                "duplicate `forward` attribute";
+                help = old_forward.span() => "there can be just one location, try removing the wrong one"
+            );
+        }
+
+        AttributeAction::Remove
+    });
 
     let span = match (preconditions_span, forward_span) {
         (Some(preconditions_span), Some(forward_span)) => Some(
@@ -226,14 +181,19 @@ pub(crate) fn render_call(
     }: CallAttributes,
     original_call: Call,
 ) -> Expr {
-    let preconditions = check_reasons(assure_attributes);
+    check_reasons(&assure_attributes);
 
-    if let Some(forward) = forward {
+    let precondition = assure_attributes
+        .into_iter()
+        .map(|attr| attr.into())
+        .collect();
+
+    if let Some((forward, _, _)) = forward.map(|fwd| fwd.into_content()) {
         forward.update_call(original_call, |call| {
-            render_assure(preconditions, call, span)
+            render_assure(precondition, call, span)
         })
     } else {
-        let output = render_assure(preconditions, original_call, span);
+        let output = render_assure(precondition, original_call, span);
 
         output.into()
     }
@@ -242,9 +202,9 @@ pub(crate) fn render_call(
 /// Checks that all reasons exist and make sense.
 ///
 /// This function emits errors, if appropriate.
-fn check_reasons(assure_attributes: Vec<AssureAttr>) -> Vec<Precondition> {
+fn check_reasons(assure_attributes: &[Attr<AssureAttr>]) {
     for assure_attribute in assure_attributes.iter() {
-        match assure_attribute {
+        match assure_attribute.content() {
             AssureAttr::WithReason { reason, .. } => {
                 if let Some(reason) = unfinished_reason(&reason.reason) {
                     emit_warning!(
@@ -267,22 +227,13 @@ fn check_reasons(assure_attributes: Vec<AssureAttr>) -> Vec<Precondition> {
                     )
                 }
             }
-            AssureAttr::WithoutReason {
-                precondition,
-                missing_reason_span,
-                ..
-            } => emit_error!(
+            AssureAttr::WithoutReason { precondition } => emit_error!(
                 precondition.span(),
                 "you need to specify a reason why this precondition holds";
-                help = *missing_reason_span => "add `, reason = {:?}`", HINT_REASON
+                help = "add `, reason = {:?}`", HINT_REASON
             ),
         }
     }
-
-    assure_attributes
-        .into_iter()
-        .map(|holds_statement| holds_statement.into())
-        .collect()
 }
 
 /// Returns an unfinished reason declaration for the precondition if one exists.

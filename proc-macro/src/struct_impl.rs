@@ -72,11 +72,11 @@ use syn::{parse2, spanned::Spanned, Ident, ItemFn, PathArguments};
 use crate::{
     call::Call,
     helpers::add_span_to_signature,
-    precondition::{Precondition, ReadWrite},
+    precondition::{CfgPrecondition, Precondition, ReadWrite},
 };
 
 /// Renders a precondition as a `String` representing an identifier.
-pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
+pub(crate) fn render_as_ident(precondition: &CfgPrecondition) -> Ident {
     /// Escapes characters that are not valid in identifiers.
     fn escape_non_ident_chars(string: String) -> String {
         string
@@ -89,7 +89,7 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
             .collect()
     }
 
-    let mut ident = match precondition {
+    let mut ident = match precondition.precondition() {
         Precondition::ValidPtr {
             ident, read_write, ..
         } => format_ident!(
@@ -118,7 +118,7 @@ pub(crate) fn render_as_ident(precondition: &Precondition) -> Ident {
 
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
-    preconditions: Vec<Precondition>,
+    preconditions: Vec<CfgPrecondition>,
     function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
@@ -168,7 +168,11 @@ pub(crate) fn render_pre(
 }
 
 /// Generates the code for the call with the precondition handling added.
-pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, span: Span) -> Call {
+pub(crate) fn render_assure(
+    preconditions: Vec<CfgPrecondition>,
+    mut call: Call,
+    span: Span,
+) -> Call {
     if !call.is_function() {
         emit_error!(
             call,

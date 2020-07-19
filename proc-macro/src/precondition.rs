@@ -1,6 +1,6 @@
 //! Defines the different kinds of preconditions.
 
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::{cmp::Ordering, fmt};
 use syn::{
@@ -305,6 +305,53 @@ impl Spanned for ReadWrite {
                 .join(w_keyword.span)
                 .unwrap_or_else(|| r_keyword.span),
         }
+    }
+}
+
+/// A precondition with an optional `cfg` applying to it.
+pub(crate) struct CfgPrecondition {
+    /// The precondition with additional data.
+    pub(crate) precondition: Precondition,
+    /// The `cfg` applying to the precondition.
+    #[allow(dead_code)]
+    pub(crate) cfg: Option<TokenStream>,
+    /// The span best representing the precondition.
+    pub(crate) span: Span,
+}
+
+impl CfgPrecondition {
+    /// The raw precondition.
+    pub(crate) fn precondition(&self) -> &Precondition {
+        &self.precondition
+    }
+}
+
+impl Spanned for CfgPrecondition {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl PartialEq for CfgPrecondition {
+    fn eq(&self, other: &Self) -> bool {
+        match self.cmp(other) {
+            Ordering::Equal => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for CfgPrecondition {}
+
+impl PartialOrd for CfgPrecondition {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for CfgPrecondition {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.precondition.cmp(&other.precondition)
     }
 }
 
