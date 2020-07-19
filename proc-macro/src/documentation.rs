@@ -12,7 +12,7 @@ use syn::{
 use crate::{
     extern_crate::{ImplBlock, Module},
     helpers::HINT_REASON,
-    precondition::Precondition,
+    precondition::{CfgPrecondition, Precondition},
 };
 
 /// Evaluates to the base URL of the documentation for the `pre` crate.
@@ -68,7 +68,7 @@ macro_rules! doc {
 /// Generates documentation of the preconditions for a function or method.
 pub(crate) fn generate_docs(
     function: &Signature,
-    preconditions: &[Precondition],
+    preconditions: &[CfgPrecondition],
     impl_block_context: Option<ImplBlockContext>,
 ) -> Attribute {
     let span = function.span();
@@ -189,7 +189,7 @@ pub(crate) fn generate_docs(
         doc!(docs);
 
         for precondition in preconditions {
-            match precondition {
+            match precondition.precondition() {
                 Precondition::ValidPtr {
                     ident, read_write, ..
                 } => doc!(
@@ -244,7 +244,7 @@ pub(crate) fn generate_docs(
             doc!(
                 docs,
                 "#[assure({}, reason = {:?})]",
-                precondition,
+                precondition.precondition(),
                 HINT_REASON
             );
         }

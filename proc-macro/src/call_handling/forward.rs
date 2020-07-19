@@ -59,11 +59,6 @@ pub(crate) enum ForwardAttr {
     Direct {
         /// The path that should be added.
         path: Path,
-        /// The span best representing the whole attribute.
-        ///
-        /// This is only optional, because it cannot be determined while parsing.
-        /// It is filled immediately after parsing.
-        span: Option<Span>,
     },
     /// The function or method to be called is located at the specified impl block.
     ImplBlock {
@@ -71,11 +66,6 @@ pub(crate) enum ForwardAttr {
         impl_keyword: Token![impl],
         /// The path to the impl block.
         path: Path,
-        /// The span best representing the whole attribute.
-        ///
-        /// This is only optional, because it cannot be determined while parsing.
-        /// It is filled immediately after parsing.
-        span: Option<Span>,
     },
     /// The function to be called is found by replacing `from` with `to` in the path.
     Replace {
@@ -85,11 +75,6 @@ pub(crate) enum ForwardAttr {
         _arrow: Token![->],
         /// The path that should be prepended instead of the removed prefix.
         to: Path,
-        /// The span best representing the whole attribute.
-        ///
-        /// This is only optional, because it cannot be determined while parsing.
-        /// It is filled immediately after parsing.
-        span: Option<Span>,
     },
 }
 
@@ -108,13 +93,9 @@ impl Parse for ForwardAttr {
                 ForwardAttr::ImplBlock {
                     impl_keyword,
                     path: first_path,
-                    span: None,
                 }
             } else {
-                ForwardAttr::Direct {
-                    path: first_path,
-                    span: None,
-                }
+                ForwardAttr::Direct { path: first_path }
             }
         } else {
             let arrow = input.parse()?;
@@ -124,7 +105,6 @@ impl Parse for ForwardAttr {
                 from: first_path,
                 _arrow: arrow,
                 to: second_path,
-                span: None,
             }
         })
     }
@@ -133,19 +113,13 @@ impl Parse for ForwardAttr {
 impl Spanned for ForwardAttr {
     fn span(&self) -> Span {
         match self {
-            ForwardAttr::Direct { path, span } => span.unwrap_or_else(|| path.span()),
-            ForwardAttr::ImplBlock {
-                impl_keyword,
-                path,
-                span,
-            } => span.unwrap_or_else(|| {
-                impl_keyword
-                    .span
-                    .join(path.span())
-                    .unwrap_or_else(|| path.span())
-            }),
-            ForwardAttr::Replace { from, to, span, .. } => {
-                span.unwrap_or_else(|| from.span().join(to.span()).unwrap_or_else(|| to.span()))
+            ForwardAttr::Direct { path } => path.span(),
+            ForwardAttr::ImplBlock { impl_keyword, path } => impl_keyword
+                .span
+                .join(path.span())
+                .unwrap_or_else(|| path.span()),
+            ForwardAttr::Replace { from, to, .. } => {
+                from.span().join(to.span()).unwrap_or_else(|| to.span())
             }
         }
     }
@@ -276,17 +250,6 @@ impl ForwardAttr {
         }
 
         resulting_path
-    }
-
-    /// Sets the span of this `forward` attribute.
-    pub(crate) fn set_span(&mut self, new_span: Span) {
-        match self {
-            ForwardAttr::Direct { span, .. }
-            | ForwardAttr::ImplBlock { span, .. }
-            | ForwardAttr::Replace { span, .. } => {
-                span.replace(new_span);
-            }
-        }
     }
 }
 

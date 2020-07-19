@@ -18,8 +18,8 @@ use self::expr_handling::render_expr;
 use crate::{
     call_handling::remove_call_attributes,
     documentation::generate_docs,
-    helpers::{attributes_of_expression, is_attr, visit_matching_attrs_parsed, Parenthesized},
-    precondition::Precondition,
+    helpers::{attributes_of_expression, visit_matching_attrs_parsed_mut, Attr, AttributeAction},
+    precondition::{CfgPrecondition, Precondition},
     render_pre,
 };
 
@@ -55,6 +55,17 @@ impl Parse for PreAttr {
             Ok(PreAttr::NoDebugAssert(input.parse()?))
         } else {
             Ok(PreAttr::Precondition(input.parse()?))
+        }
+    }
+}
+
+impl Spanned for PreAttr {
+    fn span(&self) -> Span {
+        match self {
+            PreAttr::Empty => Span::call_site(),
+            PreAttr::NoDoc(no_doc) => no_doc.span,
+            PreAttr::NoDebugAssert(no_debug_assert) => no_debug_assert.span,
+            PreAttr::Precondition(precondition) => precondition.span(),
         }
     }
 }
@@ -157,16 +168,16 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
         PreAttr::Precondition(precondition) => Some(precondition.span()),
     });
 
-    let mut preconditions = Vec::new();
+    let mut preconditions: Vec<CfgPrecondition> = Vec::new();
 
     let mut render_docs = true;
     let mut debug_assert = true;
 
-    let mut handle_attr = |attr| match attr {
-        PreAttr::Empty => (),
-        PreAttr::NoDoc(_) => render_docs = false,
-        PreAttr::NoDebugAssert(_) => debug_assert = false,
-        PreAttr::Precondition(precondition) => {
+    let mut handle_attr = |attr: Attr<PreAttr>| match attr.into_content() {
+        (PreAttr::Empty, _, _) => (),
+        (PreAttr::NoDoc(_), _, _) => render_docs = false,
+        (PreAttr::NoDebugAssert(_), _, _) => debug_assert = false,
+        (PreAttr::Precondition(precondition), cfg, span) => {
             if let Precondition::Boolean(boolean_expr) = &precondition {
                 if let Expr::Path(p) = &**boolean_expr {
                     if let (None, Some(ident)) = (&p.qself, p.path.get_ident()) {
@@ -179,19 +190,23 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
                     }
                 }
             }
-            preconditions.push(precondition)
+            preconditions.push(CfgPrecondition {
+                precondition,
+                cfg,
+                span,
+            })
         }
     };
 
     if let Some(first_attr) = first_attr {
-        handle_attr(first_attr);
+        handle_attr(first_attr.into());
     }
 
-    let attr_span = visit_matching_attrs_parsed(
-        &mut function.attrs,
-        |attr| is_attr("pre", attr),
-        |parsed_attr: Parenthesized<PreAttr>, _span| handle_attr(parsed_attr.content),
-    );
+    let attr_span = visit_matching_attrs_parsed_mut(&mut function.attrs, "pre", |attr| {
+        handle_attr(attr);
+
+        AttributeAction::Remove
+    });
 
     let span = match (attr_span, first_attr_span) {
         (Some(attr_span), Some(first_attr_span)) => {
@@ -211,7 +226,7 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
 
         if debug_assert {
             for condition in preconditions.iter() {
-                if let Precondition::Boolean(expr) = condition {
+                if let Precondition::Boolean(expr) = condition.precondition() {
                     function.block.stmts.insert(
                         0,
                         parse2(quote_spanned! { expr.span()=>

@@ -6,7 +6,6 @@ use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
-    parse2,
     spanned::Spanned,
     token::Brace,
     ForeignItemFn, Generics, Ident, Path, PathArguments, PathSegment, Token, Type,
@@ -14,8 +13,9 @@ use syn::{
 
 use crate::{
     documentation::{generate_docs, ImplBlockContext},
-    helpers::{is_attr, Parenthesized},
+    helpers::visit_matching_attrs_parsed,
     pre_attr::PreAttr,
+    precondition::CfgPrecondition,
 };
 
 /// An impl block in a `extern_crate` module.
@@ -173,21 +173,19 @@ impl ImplBlock {
                 let mut render_docs = true;
                 let mut preconditions = Vec::new();
 
-                for attr in &function.attrs {
-                    if is_attr("pre", attr) {
-                        match parse2(attr.tokens.clone()) {
-                            Ok(Parenthesized {
-                                content: PreAttr::NoDoc(_),
-                                ..
-                            }) => render_docs = false,
-                            Ok(Parenthesized {
-                                content: PreAttr::Precondition(precondition),
-                                ..
-                            }) => preconditions.push(precondition),
-                            _ => (),
+                visit_matching_attrs_parsed(&function.attrs, "pre", |attr| {
+                    match attr.into_content() {
+                        (PreAttr::NoDoc(_), _, _) => render_docs = false,
+                        (PreAttr::Precondition(precondition), cfg, span) => {
+                            preconditions.push(CfgPrecondition {
+                                precondition,
+                                cfg,
+                                span,
+                            })
                         }
+                        _ => (),
                     }
-                }
+                });
 
                 if render_docs {
                     Some(generate_docs(

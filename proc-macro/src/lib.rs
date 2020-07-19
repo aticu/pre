@@ -89,7 +89,7 @@ pub fn forward(_: TokenStream, _: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn extern_crate(attr: TokenStream, module: TokenStream) -> TokenStream {
-    let attr = parse_macro_input!(attr as extern_crate::Attr);
+    let attr = parse_macro_input!(attr as extern_crate::ExternCrateAttr);
     let module = parse_macro_input!(module as extern_crate::Module);
 
     let output = module.render(attr);
