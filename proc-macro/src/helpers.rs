@@ -1,10 +1,12 @@
 //! Allows retrieving the name of the main crate.
 
 use lazy_static::lazy_static;
-use proc_macro2::Span;
-use proc_macro_error::abort_call_site;
+use proc_macro2::{Span, TokenStream};
+use proc_macro_error::{abort_call_site, emit_error};
 use std::env;
 use syn::{parse::Parse, spanned::Spanned, Attribute, Expr, Signature};
+
+use crate::precondition::CfgPrecondition;
 
 pub(crate) use attr::Attr;
 
@@ -123,4 +125,42 @@ pub(crate) fn add_span_to_signature(span: Span, signature: &mut Signature) {
     if let Some(abi) = &mut signature.abi {
         abi.extern_token.span = abi.extern_token.span.join(span).unwrap_or_else(|| span);
     }
+}
+
+/// Combines the `cfg` of all preconditions if possible.
+pub(crate) fn combine_cfg(preconditions: &[CfgPrecondition], _span: Span) -> Option<TokenStream> {
+    const MISMATCHED_CFG: &str = "mismatched `cfg` predicates for preconditions";
+    const MISMATCHED_CFG_NOTE: &str =
+        "all preconditions must have syntactically equal `cfg` predicates";
+
+    let render_cfg = |cfg: Option<&TokenStream>| cfg.map(|cfg| format!("{}", cfg));
+
+    let first_cfg = preconditions.first().and_then(|p| p.cfg.clone());
+    let first_cfg_rendered = render_cfg(first_cfg.as_ref());
+
+    for precondition in preconditions.iter().skip(1) {
+        if first_cfg_rendered != render_cfg(precondition.cfg.as_ref()) {
+            match (&first_cfg, &precondition.cfg) {
+                (Some(first_cfg), Some(current_cfg)) => {
+                    emit_error!(
+                        current_cfg.span(),
+                        MISMATCHED_CFG;
+                        note = MISMATCHED_CFG_NOTE;
+                        note = first_cfg.span() => "`{}` != `{}`", first_cfg, current_cfg
+                    );
+                }
+                (Some(cfg), None) | (None, Some(cfg)) => {
+                    emit_error!(
+                        cfg.span(),
+                        MISMATCHED_CFG;
+                        note = MISMATCHED_CFG_NOTE;
+                        note = "some preconditions have a `cfg` predicate and some do not"
+                    );
+                }
+                (None, None) => unreachable!("two `None`s are equal to each other"),
+            }
+        }
+    }
+
+    first_cfg
 }

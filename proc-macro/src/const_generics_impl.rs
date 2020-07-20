@@ -58,7 +58,7 @@ use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
 
 use crate::{
     call::Call,
-    helpers::{add_span_to_signature, CRATE_NAME},
+    helpers::{add_span_to_signature, combine_cfg, CRATE_NAME},
     precondition::{CfgPrecondition, Precondition, ReadWrite},
 };
 
@@ -118,6 +118,7 @@ pub(crate) fn render_pre(
     function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
+    let combined_cfg = combine_cfg(&preconditions, span);
     let preconditions = render_condition_list(preconditions, span);
 
     // Include the precondition site into the span of the function.
@@ -126,7 +127,7 @@ pub(crate) fn render_pre(
 
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
-            #[cfg(not(doc))]
+            #[cfg(all(not(doc), #combined_cfg))]
             _: ::core::marker::PhantomData<(#preconditions)>
         })
         .expect("parses as a function argument"),
@@ -143,10 +144,12 @@ pub(crate) fn render_assure(
     mut call: Call,
     span: Span,
 ) -> Call {
+    let combined_cfg = combine_cfg(&preconditions, span);
     let preconditions = render_condition_list(preconditions, span);
 
     call.args_mut().push(
         parse2(quote_spanned! { span=>
+            #[cfg(all(not(doc), #combined_cfg))]
             ::core::marker::PhantomData::<(#preconditions)>
         })
         .expect("parses as an expression"),

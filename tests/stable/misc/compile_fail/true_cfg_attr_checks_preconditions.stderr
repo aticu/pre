@@ -1,0 +1,5 @@
+error[E0560]: struct `foo` has no field named `_custom_fuu`
+  --> $DIR/true_cfg_attr_checks_preconditions.rs:10:15
+   |
+10 |         assure("fuu", reason = "is fuu")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a field with a similar name exists: `_custom_foo`
