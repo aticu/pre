@@ -1,0 +1,32 @@
+error: mismatched `cfg` predicates for preconditions
+
+  = note: all preconditions must have syntactically equal `cfg` predicates
+  = note: `target_endian = "big"` != `target_endian = "little"`
+
+  --> $DIR/cfg_attr_different_predicates.rs:15:9
+   |
+15 |         target_endian = "little",
+   |         ^^^^^^^^^^^^^
+
+error: mismatched `cfg` predicates for preconditions
+
+  = note: all preconditions must have syntactically equal `cfg` predicates
+  = note: some preconditions have a `cfg` predicate and some do not
+
+  --> $DIR/cfg_attr_different_predicates.rs:22:9
+   |
+22 |         any(target_endian = "big", target_endian = "little"),
+   |         ^^^
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/cfg_attr_different_predicates.rs:18:5
+   |
+4  |   #[cfg_attr(target_endian = "little", pre("foo_little"))]
+   |  __________________________________________-
+5  | | fn foo() {}
+   | |___________- defined here
+...
+18 |       foo();
+   |       ^^^-- supplied 0 arguments
+   |       |
+   |       expected 1 argument

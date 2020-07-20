@@ -71,7 +71,7 @@ use syn::{parse2, spanned::Spanned, Ident, ItemFn, PathArguments};
 
 use crate::{
     call::Call,
-    helpers::add_span_to_signature,
+    helpers::{add_span_to_signature, combine_cfg},
     precondition::{CfgPrecondition, Precondition, ReadWrite},
 };
 
@@ -122,6 +122,7 @@ pub(crate) fn render_pre(
     function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
+    let combined_cfg = combine_cfg(&preconditions, span);
     if function.sig.receiver().is_some() {
         emit_error!(
             span,
@@ -143,7 +144,7 @@ pub(crate) fn render_pre(
     let struct_def = quote_spanned! { span=>
         #[allow(non_camel_case_types)]
         #[allow(non_snake_case)]
-        #[cfg(not(doc))]
+        #[cfg(all(not(doc), #combined_cfg))]
         #vis struct #function_name {
             #preconditions_rendered
         }
@@ -155,7 +156,7 @@ pub(crate) fn render_pre(
 
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
-            #[cfg(not(doc))]
+            #[cfg(all(not(doc), #combined_cfg))]
             _: #function_name
         })
         .expect("parses as valid function argument"),
@@ -173,6 +174,7 @@ pub(crate) fn render_assure(
     mut call: Call,
     span: Span,
 ) -> Call {
+    let combined_cfg = combine_cfg(&preconditions, span);
     if !call.is_function() {
         emit_error!(
             call,
@@ -219,6 +221,7 @@ pub(crate) fn render_assure(
 
     call.args_mut().push(
         parse2(quote_spanned! { span=>
+            #[cfg(all(not(doc), #combined_cfg))]
             #path {
                 #preconditions_rendered
             }

@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+  --> $DIR/true_cfg_attr_checks_preconditions.rs:10:9
+   |
+10 |         assure("fuu", reason = "is fuu")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `"foo"`, found `"fuu"`
+   |
+   = note: expected struct `std::marker::PhantomData<(pre::CustomCondition<"foo">,)>`
+              found struct `std::marker::PhantomData<(pre::CustomCondition<"fuu">,)>`
