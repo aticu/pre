@@ -16,7 +16,7 @@ std = []
 core = []
 
 [dependencies]
-pre-proc-macro = { version = "0.1", path = "../proc-macro" }
+pre-proc-macro = { version = "=0.1.0", path = "../proc-macro" }
 cfg-if = "0.1"
 
 [build-dependencies]
