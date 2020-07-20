@@ -108,7 +108,7 @@
 //! has to manually check all the contracts of the `unsafe` code. Therefore even when using pre
 //! you should still **always check the "Safety" section of the documentation**.
 //!
-//! There are also some technical limitations to that pre can do:
+//! There are also some technical limitations to what pre can do:
 //!
 //! - There is more than one form of `unsafe` code. pre currently exclusively focuses on `unsafe`
 //!   functions.
@@ -657,7 +657,7 @@
 /// and how to call them with the preconditions appended at the end of their documentation.
 ///
 /// If you wish not to add such documentation to a particular item, you can add `#[pre(no_doc)]` to
-/// the attributes of the item, to prevent its generation.
+/// the attributes of the item to prevent its generation.
 pub use pre_proc_macro::pre;
 
 /// Assure that a precondition holds.
@@ -704,7 +704,7 @@ pub use pre_proc_macro::pre;
 ///
 /// # Terminology
 ///
-/// The term `assure` was chosen, because it most accurately describes the function of the
+/// The term `assure` was chosen because it most accurately describes the function of the
 /// attribute.
 ///
 /// There are no guarantees that a precondition holds, other than the fact that the programmer

@@ -117,7 +117,7 @@ programmers know where to look, but it does not do anything beyond that. The pro
 has to manually check all the contracts of the `unsafe` code. Therefore even when using pre
 you should still **always check the "Safety" section of the documentation**.
 
-There are also some technical limitations to that pre can do:
+There are also some technical limitations to what pre can do:
 
 - There is more than one form of `unsafe` code. pre currently exclusively focuses on `unsafe`
   functions.
