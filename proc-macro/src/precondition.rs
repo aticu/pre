@@ -1,9 +1,10 @@
 //! Defines the different kinds of preconditions.
 
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::{cmp::Ordering, fmt};
 use syn::{
+    ext::IdentExt,
     parenthesized,
     parse::{Parse, ParseStream},
     spanned::Spanned,
@@ -16,6 +17,7 @@ mod custom_keywords {
     use syn::custom_keyword;
 
     custom_keyword!(valid_ptr);
+    custom_keyword!(proper_align);
     custom_keyword!(r);
     custom_keyword!(w);
 }
@@ -36,6 +38,14 @@ pub(crate) enum Precondition {
         /// Information on what accesses of the pointer must be valid.
         read_write: ReadWrite,
     },
+    ProperAlign {
+        /// The `proper_align` keyword.
+        proper_align_keyword: custom_keywords::proper_align,
+        /// The parentheses following the `proper_align` keyword.
+        parentheses: Paren,
+        /// The identifier of the pointer.
+        ident: Ident,
+    },
     /// An expression that should evaluate to a boolean value.
     Boolean(Box<Expr>),
     /// A custom precondition that is spelled out in a string.
@@ -48,9 +58,25 @@ impl fmt::Display for Precondition {
             Precondition::ValidPtr {
                 ident, read_write, ..
             } => write!(f, "valid_ptr({}, {})", ident.to_string(), read_write),
+            Precondition::ProperAlign { ident, .. } => {
+                write!(f, "proper_align({})", ident.to_string())
+            }
             Precondition::Boolean(expr) => write!(f, "{}", quote! { #expr }),
             Precondition::Custom(lit) => write!(f, "{:?}", lit.value()),
         }
+    }
+}
+
+/// Parses an identifier that is valid for use in a precondition.
+fn parse_precondition_ident(input: ParseStream) -> syn::Result<Ident> {
+    let lookahead = input.lookahead1();
+
+    if lookahead.peek(Token![self]) {
+        input.call(Ident::parse_any)
+    } else if lookahead.peek(Ident) {
+        input.parse()
+    } else {
+        Err(lookahead.error())
     }
 }
 
@@ -62,7 +88,7 @@ impl Parse for Precondition {
             let valid_ptr_keyword = input.parse()?;
             let content;
             let parentheses = parenthesized!(content in input);
-            let ident = content.parse()?;
+            let ident = parse_precondition_ident(&content)?;
             let comma = content.parse()?;
             let read_write = content.parse()?;
 
@@ -77,6 +103,21 @@ impl Parse for Precondition {
             } else {
                 Err(content.error("unexpected token"))
             }
+        } else if input.peek(custom_keywords::proper_align) {
+            let proper_align_keyword = input.parse()?;
+            let content;
+            let parentheses = parenthesized!(content in input);
+            let ident = parse_precondition_ident(&content)?;
+
+            if content.is_empty() {
+                Ok(Precondition::ProperAlign {
+                    proper_align_keyword,
+                    parentheses,
+                    ident,
+                })
+            } else {
+                Err(content.error("unexpected token"))
+            }
         } else if input.peek(LitStr) {
             Ok(Precondition::Custom(input.parse()?))
         } else {
@@ -87,7 +128,7 @@ impl Parse for Precondition {
                 Err(mut err) => {
                     err.combine(Error::new(
                         start_span,
-                        "expected `valid_ptr`, a string literal or a boolean expression",
+                        "expected `valid_ptr`, `proper_align`, a string literal or a boolean expression",
                     ));
 
                     Err(err)
@@ -108,6 +149,14 @@ impl Spanned for Precondition {
                 .span()
                 .join(parentheses.span)
                 .unwrap_or_else(|| valid_ptr_keyword.span()),
+            Precondition::ProperAlign {
+                proper_align_keyword,
+                parentheses,
+                ..
+            } => proper_align_keyword
+                .span()
+                .join(parentheses.span)
+                .unwrap_or_else(|| proper_align_keyword.span()),
             Precondition::Boolean(expr) => expr.span(),
             Precondition::Custom(lit) => lit.span(),
         }
@@ -119,8 +168,9 @@ impl Precondition {
     fn descriminant_id(&self) -> usize {
         match self {
             Precondition::ValidPtr { .. } => 0,
-            Precondition::Boolean(_) => 1,
-            Precondition::Custom(_) => 2,
+            Precondition::ProperAlign { .. } => 1,
+            Precondition::Boolean(_) => 2,
+            Precondition::Custom(_) => 3,
         }
     }
 }
@@ -136,6 +186,14 @@ impl Ord for Precondition {
                     ident: ident_self, ..
                 },
                 Precondition::ValidPtr {
+                    ident: ident_other, ..
+                },
+            ) => ident_self.cmp(&ident_other),
+            (
+                Precondition::ProperAlign {
+                    ident: ident_self, ..
+                },
+                Precondition::ProperAlign {
                     ident: ident_other, ..
                 },
             ) => ident_self.cmp(&ident_other),
@@ -261,6 +319,53 @@ impl Spanned for ReadWrite {
                 .join(w_keyword.span)
                 .unwrap_or_else(|| r_keyword.span),
         }
+    }
+}
+
+/// A precondition with an optional `cfg` applying to it.
+pub(crate) struct CfgPrecondition {
+    /// The precondition with additional data.
+    pub(crate) precondition: Precondition,
+    /// The `cfg` applying to the precondition.
+    #[allow(dead_code)]
+    pub(crate) cfg: Option<TokenStream>,
+    /// The span best representing the precondition.
+    pub(crate) span: Span,
+}
+
+impl CfgPrecondition {
+    /// The raw precondition.
+    pub(crate) fn precondition(&self) -> &Precondition {
+        &self.precondition
+    }
+}
+
+impl Spanned for CfgPrecondition {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl PartialEq for CfgPrecondition {
+    fn eq(&self, other: &Self) -> bool {
+        match self.cmp(other) {
+            Ordering::Equal => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for CfgPrecondition {}
+
+impl PartialOrd for CfgPrecondition {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for CfgPrecondition {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.precondition.cmp(&other.precondition)
     }
 }
 

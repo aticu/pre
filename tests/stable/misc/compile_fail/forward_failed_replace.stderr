@@ -16,7 +16,7 @@ error[E0574]: expected struct, variant or union type, found function `a::d::foo`
 22 | |     a::d::foo();
    | |_____^ not a struct, variant or union type
    |
-help: possible better candidate is found in another module, you can import it into scope
+help: consider importing this struct instead
    |
 1  | use crate::c::d::foo;
    |

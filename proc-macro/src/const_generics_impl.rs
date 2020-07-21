@@ -58,19 +58,19 @@ use syn::{parse2, spanned::Spanned, Ident, ItemFn, LitStr};
 
 use crate::{
     call::Call,
-    helpers::{add_span_to_signature, CRATE_NAME},
-    precondition::{Precondition, ReadWrite},
+    helpers::{add_span_to_signature, combine_cfg, CRATE_NAME},
+    precondition::{CfgPrecondition, Precondition, ReadWrite},
 };
 
 /// Renders a precondition list to a token stream.
-fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> TokenStream {
+fn render_condition_list(mut preconditions: Vec<CfgPrecondition>, span: Span) -> TokenStream {
     preconditions.sort_unstable();
 
     let mut tokens = TokenStream::new();
     let crate_name = Ident::new(&CRATE_NAME, span);
 
     for precondition in preconditions {
-        match &precondition {
+        match precondition.precondition() {
             Precondition::ValidPtr {
                 ident, read_write, ..
             } => {
@@ -82,6 +82,12 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
                 };
                 tokens.append_all(quote_spanned! { precondition.span()=>
                     ::#crate_name::ValidPtrCondition::<#ident_lit, #rw_str>
+                });
+            }
+            Precondition::ProperAlign { ident, .. } => {
+                let ident_lit = LitStr::new(&ident.to_string(), ident.span());
+                tokens.append_all(quote_spanned! { precondition.span()=>
+                    ::#crate_name::ProperAlignCondition::<#ident_lit>
                 });
             }
             Precondition::Boolean(expr) => {
@@ -108,10 +114,11 @@ fn render_condition_list(mut preconditions: Vec<Precondition>, span: Span) -> To
 
 /// Generates the code for the function with the precondition handling added.
 pub(crate) fn render_pre(
-    preconditions: Vec<Precondition>,
+    preconditions: Vec<CfgPrecondition>,
     function: &mut ItemFn,
     span: Span,
 ) -> TokenStream {
+    let combined_cfg = combine_cfg(&preconditions, span);
     let preconditions = render_condition_list(preconditions, span);
 
     // Include the precondition site into the span of the function.
@@ -120,7 +127,7 @@ pub(crate) fn render_pre(
 
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
-            #[cfg(not(doc))]
+            #[cfg(all(not(doc), #combined_cfg))]
             _: ::core::marker::PhantomData<(#preconditions)>
         })
         .expect("parses as a function argument"),
@@ -132,11 +139,17 @@ pub(crate) fn render_pre(
 }
 
 /// Generates the code for the call with the precondition handling added.
-pub(crate) fn render_assure(preconditions: Vec<Precondition>, mut call: Call, span: Span) -> Call {
+pub(crate) fn render_assure(
+    preconditions: Vec<CfgPrecondition>,
+    mut call: Call,
+    span: Span,
+) -> Call {
+    let combined_cfg = combine_cfg(&preconditions, span);
     let preconditions = render_condition_list(preconditions, span);
 
     call.args_mut().push(
         parse2(quote_spanned! { span=>
+            #[cfg(all(not(doc), #combined_cfg))]
             ::core::marker::PhantomData::<(#preconditions)>
         })
         .expect("parses as an expression"),

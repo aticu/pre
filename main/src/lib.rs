@@ -550,13 +550,31 @@
 ///
 ///    This precondition **does not** guarantee:
 ///
-///    - A valid alignment of the pointer.
+///    - A proper alignment of the pointer.
 ///    - A valid initialized value for the pointee.
 ///
 ///    Also there are no guarantees about the size of the allocated object.
 ///    If there are no other preconditions about the size of the allocated object, usually the size
 ///    of a single value can be assumed.
-/// 3. Boolean preconditions:
+/// 3. Proper alignment preconditions:
+///
+///    This precondition requires that a raw pointer has a proper alignment for its type.
+///    More concretely for a `*const T` and `*mut T`, this means that the pointer must have an
+///    alignment of `mem::align_of::<T>()`.
+///
+///    The syntax is `#[pre(proper_align(<ptr_name>))]`.
+///
+///    - `<ptr_name>`: The identifier of the pointer argument that must have a proper alignment.
+///
+///    ### Example
+///
+///    ```rust
+///    # use pre::pre;
+///    #
+///    #[pre(proper_align(ptr_name))]
+///    fn foo(ptr_name: *mut i32) {}
+///    ```
+/// 4. Boolean preconditions:
 ///
 ///    This precondition is a boolean expression that should evaluate to  `true` for the
 ///    precondition to hold.
@@ -1033,6 +1051,10 @@ cfg_if::cfg_if! {
         /// A condition that the pointer of name `PTR` is valid for `ACCESS_TYPE` accesses.
         #[doc(hidden)]
         pub struct ValidPtrCondition<const PTR: &'static str, const ACCESS_TYPE: &'static str>;
+
+        /// A condition that the pointer of name `PTR` has a proper alignment for its type.
+        #[doc(hidden)]
+        pub struct ProperAlignCondition<const PTR: &'static str>;
 
         /// A boolean condition.
         #[doc(hidden)]

@@ -2,11 +2,10 @@
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
-use quote::{quote, quote_spanned, TokenStreamExt};
+use quote::{format_ident, quote, quote_spanned, TokenStreamExt};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
-    parse2,
     spanned::Spanned,
     token::Brace,
     ForeignItemFn, Generics, Ident, Path, PathArguments, PathSegment, Token, Type,
@@ -14,8 +13,9 @@ use syn::{
 
 use crate::{
     documentation::{generate_docs, ImplBlockContext},
-    helpers::{is_attr, Parenthesized},
+    helpers::visit_matching_attrs_parsed,
     pre_attr::PreAttr,
+    precondition::CfgPrecondition,
 };
 
 /// An impl block in a `extern_crate` module.
@@ -173,21 +173,19 @@ impl ImplBlock {
                 let mut render_docs = true;
                 let mut preconditions = Vec::new();
 
-                for attr in &function.attrs {
-                    if is_attr("pre", attr) {
-                        match parse2(attr.tokens.clone()) {
-                            Ok(Parenthesized {
-                                content: PreAttr::NoDoc(_),
-                                ..
-                            }) => render_docs = false,
-                            Ok(Parenthesized {
-                                content: PreAttr::Precondition(precondition),
-                                ..
-                            }) => preconditions.push(precondition),
-                            _ => (),
+                visit_matching_attrs_parsed(&function.attrs, "pre", |attr| {
+                    match attr.into_content() {
+                        (PreAttr::NoDoc(_), _, _) => render_docs = false,
+                        (PreAttr::Precondition(precondition), cfg, span) => {
+                            preconditions.push(CfgPrecondition {
+                                precondition,
+                                cfg,
+                                span,
+                            })
                         }
+                        _ => (),
                     }
-                }
+                });
 
                 if render_docs {
                     Some(generate_docs(
@@ -226,11 +224,7 @@ impl ImplBlock {
 }
 
 /// Generates a name to use for an impl block stub function.
-pub(crate) fn impl_block_stub_name(
-    ty: &PathSegment,
-    fn_name: &impl std::fmt::Display,
-    span: Span,
-) -> Ident {
+pub(crate) fn impl_block_stub_name(ty: &PathSegment, fn_name: &Ident, span: Span) -> Ident {
     // Ideally this would start with `_` to reduce the chance for naming collisions with actual
     // functions. However this would silence any `dead_code` warnings, which the user may want to
     // be aware of. Instead this ends with `__` to reduce the chance for naming collisions.
@@ -238,5 +232,8 @@ pub(crate) fn impl_block_stub_name(
     // Note that hygiene would not help in reducing naming collisions, because the function needs
     // to be callable from an `assure` attribute that could possibly reside in a different hygenic
     // context.
-    Ident::new(&format!("{}__impl__{}__", ty.ident, fn_name), span)
+    let mut ident = format_ident!("{}__impl__{}__", ty.ident, fn_name);
+    ident.set_span(span);
+
+    ident
 }
