@@ -44,7 +44,7 @@ use syn::{
     parse2,
     punctuated::Pair,
     spanned::Spanned,
-    Expr, ExprCall, ExprPath, Path, Token,
+    Expr, ExprCall, ExprPath, Ident, Path, Token,
 };
 
 use crate::{call::Call, extern_crate::impl_block_stub_name};
@@ -254,7 +254,7 @@ impl ForwardAttr {
 }
 
 /// Creates an empty call to the given function.
-fn create_empty_call(mut path: Path, fn_name: &impl std::fmt::Display) -> ExprCall {
+fn create_empty_call(mut path: Path, fn_name: &Ident) -> ExprCall {
     if let Some(segment_pair) = path.segments.pop() {
         path.segments
             .push(impl_block_stub_name(segment_pair.value(), fn_name, path.span()).into());
