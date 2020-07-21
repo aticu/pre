@@ -1,10 +1,10 @@
 //! Allows retrieving the name of the main crate.
 
 use lazy_static::lazy_static;
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Span, TokenStream, TokenTree};
 use proc_macro_error::{abort_call_site, emit_error};
 use std::env;
-use syn::{parse::Parse, spanned::Spanned, Attribute, Expr, Signature};
+use syn::{parse::Parse, parse2, spanned::Spanned, Attribute, Expr, Signature, Token};
 
 use crate::precondition::CfgPrecondition;
 
@@ -163,4 +163,31 @@ pub(crate) fn combine_cfg(preconditions: &[CfgPrecondition], _span: Span) -> Opt
     }
 
     first_cfg
+}
+
+/// Parses the token stream to the next comma and returns the result as a new token stream.
+fn parse_to_comma(input: &mut TokenStream) -> (TokenStream, Option<Token![,]>) {
+    let mut to_comma = TokenStream::new();
+    let mut comma = None;
+
+    let mut token_iter = input.clone().into_iter();
+
+    loop {
+        match token_iter.next() {
+            Some(TokenTree::Punct(p)) if p.as_char() == ',' => {
+                comma = Some(
+                    parse2(TokenTree::from(p).into()).expect("`,` token tree is parsed as a comma"),
+                );
+
+                break;
+            }
+            Some(token_tree) => to_comma.extend(std::iter::once(token_tree)),
+            None => break,
+        }
+    }
+
+    *input = TokenStream::new();
+    input.extend(token_iter);
+
+    (to_comma, comma)
 }
