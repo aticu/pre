@@ -11,7 +11,7 @@ use syn::{
 use self::forward::ForwardAttr;
 use crate::{
     call::Call,
-    helpers::{visit_matching_attrs_parsed_mut, Attr, AttributeAction, HINT_REASON},
+    helpers::{flatten_cfgs, visit_matching_attrs_parsed_mut, Attr, AttributeAction, HINT_REASON},
     precondition::Precondition,
     render_assure,
 };
@@ -127,6 +127,8 @@ pub(crate) struct CallAttributes {
 
 /// Removes and returns all `pre`-related call-site attributes from the given attribute list.
 pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<CallAttributes> {
+    flatten_cfgs(attributes);
+
     let mut forward = None;
     let mut assure_attributes = Vec::new();
 

@@ -11,7 +11,7 @@ use syn::{
     Attribute, Path, Token,
 };
 
-use super::{parse_to_comma, CRATE_NAME};
+use super::{parse_to_comma, Parenthesized, CRATE_NAME};
 use crate::precondition::{CfgPrecondition, Precondition};
 
 /// Checks if the given attribute is an `attr_to_check` attribute of the main crate.
@@ -24,26 +24,6 @@ fn is_attr(attr_to_check: &str, path: &Path) -> bool {
         path.segments[0].ident == *CRATE_NAME && path.segments[1].ident == attr_to_check
     } else {
         false
-    }
-}
-
-/// A `TokenStream` surrounded by parentheses.
-struct Parenthesized {
-    /// The parentheses surrounding the `TokenStream`.
-    parentheses: Paren,
-    /// The content that was surrounded by the parentheses.
-    content: TokenStream,
-}
-
-impl Parse for Parenthesized {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        let parentheses = parenthesized!(content in input);
-
-        Ok(Parenthesized {
-            parentheses,
-            content: content.parse()?,
-        })
     }
 }
 
