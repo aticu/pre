@@ -26,6 +26,18 @@ macro_rules! define_libs {
         ///
         /// As a workaround, you can add the preconditions locally in your own crate using the
         /// [`extern_crate` attribute](../attr.extern_crate.html).
+        ///
+        /// # What about primitives?
+        ///
+        /// You can find the preconditions for methods of the primitive types in `impl` blocks in
+        /// the root `core` module. Currently preconditions are provided for the following
+        /// primitives:
+        ///
+        /// - `*const T`: in `const_pointer` (`#[forward(impl pre::core::const_pointer)]`)
+        /// - `*mut T`: in `mut_pointer` (`#[forward(impl pre::core::mut_pointer)]`)
+        ///
+        /// For more information on how to have these preconditions checked, have a look at the
+        /// [documentation of the forward attribute](../attr.forward.html#impl-call).
         #[cfg(feature = "core")]
         #[pre::extern_crate(core)]
         #[pre::pre(no_doc)]
@@ -49,6 +61,18 @@ macro_rules! define_libs {
         ///
         /// As a workaround, you can add the preconditions locally in your own crate using the
         /// [`extern_crate` attribute](../attr.extern_crate.html).
+        ///
+        /// # What about primitives?
+        ///
+        /// You can find the preconditions for methods of the primitive types in `impl` blocks in
+        /// the root `std` module. Currently preconditions are provided for the following
+        /// primitives:
+        ///
+        /// - `*const T`: in `const_pointer` (`#[forward(impl pre::std::const_pointer)]`)
+        /// - `*mut T`: in `mut_pointer` (`#[forward(impl pre::std::mut_pointer)]`)
+        ///
+        /// For more information on how to have these preconditions checked, have a look at the
+        /// [documentation of the forward attribute](../attr.forward.html#impl-call).
         #[cfg(feature = "std")]
         #[pre::extern_crate(std)]
         #[pre::pre(no_doc)]
@@ -83,6 +107,183 @@ define_libs! {
                 #[pre("the `MaybeUninit` contains a fully initialized, valid value of `T`")]
                 unsafe fn assume_init(self) -> T;
             }
+        }
+
+        impl<T> const_pointer<T> where T: ?Sized {
+            #[pre("the starting and the resulting pointer are in bounds of the same allocated object")]
+            #[pre("the computed offset, in bytes, does not overflow an `isize`")]
+            #[pre("performing the addition does not result in overflow")]
+            unsafe fn add(self, count: usize) -> *const T;
+
+            #[pre(proper_align(self))]
+            #[pre("`self` is null or `self` is a valid for reads")]
+            #[pre("`self` is null or `self` points to an initialized value of type `T`")]
+            #[pre("the memory referenced by the returned reference is not mutated by any pointer for the duration of `'a`, except inside a contained `UnsafeCell`")]
+            unsafe fn as_ref<'a>(self) -> Option<&'a T>;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(valid_ptr(dest, w))]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre("`dest` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(self))]
+            #[pre(proper_align(dest))]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
+            unsafe fn copy_to(self, dest: *mut T, count: usize);
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(valid_ptr(dest, w))]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre("`dest` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(self))]
+            #[pre(proper_align(dest))]
+            #[pre("the memory regions of size `count * size_of::<T>` pointed to by `self` and `dest` do not overlap")]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
+            unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize);
+
+            #[pre("the starting and the resulting pointer are in bounds of the same allocated object")]
+            #[pre("the computed offset, in bytes, does not overflow an `isize`")]
+            #[pre("performing the offset does not result in overflow")]
+            unsafe fn offset(self, count: isize) -> *const T;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(proper_align(self))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn read(self) -> T;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn read_unaligned(self) -> T;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(proper_align(self))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn read_volatile(self) -> T;
+
+            #[pre("the starting and the resulting pointer are in bounds of the same allocated object")]
+            #[pre("the computed offset, in bytes, does not overflow an `isize`")]
+            #[pre("performing the subtraction does not result in overflow")]
+            unsafe fn sub(self, count: usize) -> *const T;
+        }
+
+        impl<T> mut_pointer<T> where T: ?Sized {
+            #[pre("the starting and the resulting pointer are in bounds of the same allocated object")]
+            #[pre("the computed offset, in bytes, does not overflow an `isize`")]
+            #[pre("performing the addition does not result in overflow")]
+            unsafe fn add(self, count: usize) -> *mut T;
+
+            #[pre(proper_align(self))]
+            #[pre("`self` is null or `self` is a valid for both reads and writes")]
+            #[pre("`self` is null or `self` points to an initialized value of type `T`")]
+            #[pre("the memory referenced by the returned reference is not accessed by any pointer other than the returned reference for the duration of `'a`")]
+            unsafe fn as_mut<'a>(self) -> Option<&'a mut T>;
+
+            #[pre(proper_align(self))]
+            #[pre("`self` is null or `self` is a valid for reads")]
+            #[pre("`self` is null or `self` points to an initialized value of type `T`")]
+            #[pre("the memory referenced by the returned reference is not mutated by any pointer for the duration of `'a`, except inside a contained `UnsafeCell`")]
+            unsafe fn as_ref<'a>(self) -> Option<&'a T>;
+
+            #[pre(valid_ptr(src, r))]
+            #[pre(valid_ptr(self, w))]
+            #[pre("`src` is valid for `count * size_of::<T>()` bytes")]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(src))]
+            #[pre(proper_align(self))]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
+            unsafe fn copy_from(self, src: *const T, count: usize);
+
+            #[pre(valid_ptr(src, r))]
+            #[pre(valid_ptr(self, w))]
+            #[pre("`src` is valid for `count * size_of::<T>()` bytes")]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(src))]
+            #[pre(proper_align(self))]
+            #[pre("the memory regions of size `count * size_of::<T>` pointed to by `src` and `self` do not overlap")]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
+            unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize);
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(valid_ptr(dest, w))]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre("`dest` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(self))]
+            #[pre(proper_align(dest))]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
+            unsafe fn copy_to(self, dest: *mut T, count: usize);
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(valid_ptr(dest, w))]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre("`dest` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(self))]
+            #[pre(proper_align(dest))]
+            #[pre("the memory regions of size `count * size_of::<T>` pointed to by `self` and `dest` do not overlap")]
+            #[pre("`T` is `Copy` or only the values in one of the regions are used after this call")]
+            unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize);
+
+            #[pre(valid_ptr(self, r+w))]
+            #[pre(proper_align(self))]
+            #[pre("`self` points to a value that is valid for dropping")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn drop_in_place(self);
+
+            #[pre("the starting and the resulting pointer are in bounds of the same allocated object")]
+            #[pre("the computed offset, in bytes, does not overflow an `isize`")]
+            #[pre("performing the offset does not result in overflow")]
+            unsafe fn offset(self, count: isize) -> *const T;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(proper_align(self))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn read(self) -> T;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn read_unaligned(self) -> T;
+
+            #[pre(valid_ptr(self, r))]
+            #[pre(proper_align(self))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            #[pre("`T` is `Copy` or the value at `*self` isn't used after this call")]
+            unsafe fn read_volatile(self) -> T;
+
+            #[pre(valid_ptr(self, r+w))]
+            #[pre(proper_align(self))]
+            #[pre("`self` points to a properly initialized value of type `T`")]
+            unsafe fn replace(self, src: T) -> T;
+
+            #[pre("the starting and the resulting pointer are in bounds of the same allocated object")]
+            #[pre("the computed offset, in bytes, does not overflow an `isize`")]
+            #[pre("performing the subtraction does not result in overflow")]
+            unsafe fn sub(self, count: usize) -> *const T;
+
+            #[pre(valid_ptr(self, r+w))]
+            #[pre(valid_ptr(with, r+w))]
+            #[pre(proper_align(self))]
+            #[pre(proper_align(with))]
+            unsafe fn swap(self, with: *mut T);
+
+            #[pre(valid_ptr(self, w))]
+            #[pre("`self` is properly aligned")]
+            unsafe fn write(self, val: T);
+
+            #[pre(valid_ptr(self, w))]
+            #[pre("`self` is valid for `count * size_of::<T>()` bytes")]
+            #[pre(proper_align(self))]
+            #[pre("a valid value of `T` is written to `*self` or `*self` is never used")]
+            unsafe fn write_bytes(self, val: u8, count: usize);
+
+            #[pre(valid_ptr(self, w))]
+            unsafe fn write_unaligned(self, val: T);
+
+            #[pre(valid_ptr(self, w))]
+            #[pre(proper_align(self))]
+            unsafe fn write_volatile(self, val: T);
         }
 
         mod ptr {
