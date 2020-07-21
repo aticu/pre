@@ -4,6 +4,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::{cmp::Ordering, fmt};
 use syn::{
+    ext::IdentExt,
     parenthesized,
     parse::{Parse, ParseStream},
     spanned::Spanned,
@@ -66,6 +67,19 @@ impl fmt::Display for Precondition {
     }
 }
 
+/// Parses an identifier that is valid for use in a precondition.
+fn parse_precondition_ident(input: ParseStream) -> syn::Result<Ident> {
+    let lookahead = input.lookahead1();
+
+    if lookahead.peek(Token![self]) {
+        input.call(Ident::parse_any)
+    } else if lookahead.peek(Ident) {
+        input.parse()
+    } else {
+        Err(lookahead.error())
+    }
+}
+
 impl Parse for Precondition {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let start_span = input.span();
@@ -74,7 +88,7 @@ impl Parse for Precondition {
             let valid_ptr_keyword = input.parse()?;
             let content;
             let parentheses = parenthesized!(content in input);
-            let ident = content.parse()?;
+            let ident = parse_precondition_ident(&content)?;
             let comma = content.parse()?;
             let read_write = content.parse()?;
 
@@ -93,7 +107,7 @@ impl Parse for Precondition {
             let proper_align_keyword = input.parse()?;
             let content;
             let parentheses = parenthesized!(content in input);
-            let ident = content.parse()?;
+            let ident = parse_precondition_ident(&content)?;
 
             if content.is_empty() {
                 Ok(Precondition::ProperAlign {

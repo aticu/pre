@@ -2,7 +2,7 @@
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
-use quote::{quote, quote_spanned, TokenStreamExt};
+use quote::{format_ident, quote, quote_spanned, TokenStreamExt};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
@@ -224,11 +224,7 @@ impl ImplBlock {
 }
 
 /// Generates a name to use for an impl block stub function.
-pub(crate) fn impl_block_stub_name(
-    ty: &PathSegment,
-    fn_name: &impl std::fmt::Display,
-    span: Span,
-) -> Ident {
+pub(crate) fn impl_block_stub_name(ty: &PathSegment, fn_name: &Ident, span: Span) -> Ident {
     // Ideally this would start with `_` to reduce the chance for naming collisions with actual
     // functions. However this would silence any `dead_code` warnings, which the user may want to
     // be aware of. Instead this ends with `__` to reduce the chance for naming collisions.
@@ -236,5 +232,8 @@ pub(crate) fn impl_block_stub_name(
     // Note that hygiene would not help in reducing naming collisions, because the function needs
     // to be callable from an `assure` attribute that could possibly reside in a different hygenic
     // context.
-    Ident::new(&format!("{}__impl__{}__", ty.ident, fn_name), span)
+    let mut ident = format_ident!("{}__impl__{}__", ty.ident, fn_name);
+    ident.set_span(span);
+
+    ident
 }
