@@ -3,8 +3,16 @@
 use lazy_static::lazy_static;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use proc_macro_error::{abort_call_site, emit_error};
+use quote::quote_spanned;
 use std::env;
-use syn::{parse::Parse, parse2, spanned::Spanned, Attribute, Expr, Signature, Token};
+use syn::{
+    parenthesized,
+    parse::{Parse, ParseStream},
+    parse2,
+    spanned::Spanned,
+    token::Paren,
+    Attribute, Expr, Signature, Token,
+};
 
 use crate::precondition::CfgPrecondition;
 
@@ -165,6 +173,26 @@ pub(crate) fn combine_cfg(preconditions: &[CfgPrecondition], _span: Span) -> Opt
     first_cfg
 }
 
+/// A `TokenStream` surrounded by parentheses.
+struct Parenthesized {
+    /// The parentheses surrounding the `TokenStream`.
+    parentheses: Paren,
+    /// The content that was surrounded by the parentheses.
+    content: TokenStream,
+}
+
+impl Parse for Parenthesized {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        let parentheses = parenthesized!(content in input);
+
+        Ok(Parenthesized {
+            parentheses,
+            content: content.parse()?,
+        })
+    }
+}
+
 /// Parses the token stream to the next comma and returns the result as a new token stream.
 fn parse_to_comma(input: &mut TokenStream) -> (TokenStream, Option<Token![,]>) {
     let mut to_comma = TokenStream::new();
@@ -190,4 +218,105 @@ fn parse_to_comma(input: &mut TokenStream) -> (TokenStream, Option<Token![,]>) {
     input.extend(token_iter);
 
     (to_comma, comma)
+}
+
+/// Transforms multiple attributes in a single `cfg_attr` into multiple `cfg_attr`.
+///
+/// ```rust,ignore
+/// #[cfg_attr(some_cfg, attr_1, attr_2, /* ..., */ attr_n)]
+/// ```
+///
+/// becomes
+///
+/// ```rust,ignore
+/// #[cfg_attr(some_cfg, attr_1)]
+/// #[cfg_attr(some_cfg, attr_2)]
+/// /* ... */
+/// #[cfg_attr(some_cfg, attr_n)]
+/// ```
+pub(crate) fn flatten_cfgs(attributes: &mut Vec<Attribute>) {
+    let mut i = 0;
+    while i < attributes.len() {
+        if attributes[i].path.is_ident("cfg_attr") {
+            let attribute = attributes.remove(i);
+
+            let (parentheses, mut input) = if let Ok(Parenthesized {
+                parentheses,
+                content: input,
+            }) = parse2(attribute.tokens.clone())
+            {
+                (parentheses, input)
+            } else {
+                // Ignore invalid `cfg_attr`
+                attributes.insert(i, attribute);
+                i += 1;
+                continue;
+            };
+
+            let (cfg, comma) = parse_to_comma(&mut input);
+            if comma.is_none() {
+                // Ignore invalid `cfg_attr`
+                attributes.insert(i, attribute);
+                i += 1;
+                continue;
+            }
+
+            // This ensures that the attributes are added in the correct order (the order they were
+            // specified in).
+            //
+            // Note that i is kept at the same value to handle nested `cfg_attr` attributes (e.g.
+            // `#[cfg_attr(abc, cfg_attr(def, ...))]`)
+            loop {
+                let (attr_tokens, comma) = parse_to_comma(&mut input);
+
+                let new_attribute = Attribute {
+                    pound_token: attribute.pound_token,
+                    style: attribute.style,
+                    bracket_token: attribute.bracket_token,
+                    path: attribute.path.clone(),
+                    tokens: quote_spanned! { parentheses.span=>
+                        (#cfg, #attr_tokens)
+                    },
+                };
+
+                attributes.insert(i, new_attribute);
+                i += 1;
+
+                if comma.is_none() {
+                    // We found the last attribute
+                    break;
+                }
+            }
+        } else {
+            i += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_cfg_flattening() {
+        let mut transformed_func: syn::ItemFn = syn::parse_quote! {
+            #[cfg_attr(all(target_endian = "little", target_endian = "big"), attr1, attr2, attr3)]
+            #[cfg_attr(all(target_endian = "big", target_endian = "little"), attr4, attr5, attr6)]
+            fn foo() {}
+        };
+
+        flatten_cfgs(&mut transformed_func.attrs);
+
+        let desired_result: syn::ItemFn = syn::parse_quote! {
+            #[cfg_attr(all(target_endian = "little", target_endian = "big"), attr1)]
+            #[cfg_attr(all(target_endian = "little", target_endian = "big"), attr2)]
+            #[cfg_attr(all(target_endian = "little", target_endian = "big"), attr3)]
+            #[cfg_attr(all(target_endian = "big", target_endian = "little"), attr4)]
+            #[cfg_attr(all(target_endian = "big", target_endian = "little"), attr5)]
+            #[cfg_attr(all(target_endian = "big", target_endian = "little"), attr6)]
+            fn foo() {}
+        };
+
+        assert_eq!(transformed_func, desired_result);
+    }
 }

@@ -18,7 +18,10 @@ use self::expr_handling::render_expr;
 use crate::{
     call_handling::remove_call_attributes,
     documentation::generate_docs,
-    helpers::{attributes_of_expression, visit_matching_attrs_parsed_mut, Attr, AttributeAction},
+    helpers::{
+        attributes_of_expression, flatten_cfgs, visit_matching_attrs_parsed_mut, Attr,
+        AttributeAction,
+    },
     precondition::{CfgPrecondition, Precondition},
     render_pre,
 };
@@ -161,6 +164,8 @@ impl VisitMut for PreAttrVisitor {
 
 /// Renders the given function and applies all `pre` attributes to it.
 fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenStream {
+    flatten_cfgs(&mut function.attrs);
+
     let first_attr_span = first_attr.as_ref().and_then(|attr| match attr {
         PreAttr::Empty => None,
         PreAttr::NoDoc(no_doc) => Some(no_doc.span()),
