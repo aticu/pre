@@ -1,6 +1,6 @@
 //! An abstraction for various types of attributes.
 
-use proc_macro2::{Span, TokenStream, TokenTree};
+use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
 use syn::{
     parenthesized,
@@ -11,7 +11,7 @@ use syn::{
     Attribute, Path, Token,
 };
 
-use super::CRATE_NAME;
+use super::{parse_to_comma, CRATE_NAME};
 use crate::precondition::{CfgPrecondition, Precondition};
 
 /// Checks if the given attribute is an `attr_to_check` attribute of the main crate.
@@ -210,37 +210,21 @@ impl<Content: Parse + Spanned> Attr<Content> {
         } else if attribute.path.is_ident("cfg_attr") {
             let Parenthesized {
                 parentheses: outer_parentheses,
-                content: cfg_attr_content,
+                content: mut cfg_attr_content,
             } = parse2(attribute.tokens.clone())
                 .map_err(|err| emit_error!(err))
                 .ok()?;
 
-            let mut cfg = TokenStream::new();
-            let comma;
-
-            let mut cfg_content_iter = cfg_attr_content.into_iter();
-
-            let rest_tokens = loop {
-                match cfg_content_iter.next()? {
-                    TokenTree::Punct(p) if p.as_char() == ',' => {
-                        let as_token_tree: TokenTree = p.into();
-
-                        comma = parse2(as_token_tree.into())
-                            .expect("`,` token tree is parsed as a comma");
-
-                        let mut rest_tokens = TokenStream::new();
-                        rest_tokens.extend(cfg_content_iter);
-                        break rest_tokens;
-                    }
-                    token_tree => cfg.extend(std::iter::once(token_tree)),
-                }
-            };
+            let (cfg, comma) = parse_to_comma(&mut cfg_attr_content);
+            let comma = comma?;
 
             let PathAndParenthesized {
                 path,
                 parentheses: inner_parentheses,
                 content,
-            } = parse2(rest_tokens).map_err(|err| emit_error!(err)).ok()?;
+            } = parse2(cfg_attr_content)
+                .map_err(|err| emit_error!(err))
+                .ok()?;
 
             if !is_attr(target_attr, &path) {
                 return None;
