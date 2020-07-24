@@ -6,6 +6,10 @@ macro_rules! define_libs {
             $($core_item:item)*
         }
 
+        $alloc_name:ident {
+            $($alloc_item:item)*
+        }
+
         $std_name:ident {
             $($std_item:item)*
         }
@@ -45,6 +49,34 @@ macro_rules! define_libs {
             $($core_item)*
         }
 
+        /// Precondition definitions for `unsafe` functions in the [`alloc` library](https://doc.rust-lang.org/alloc/index.html).
+        ///
+        /// It can be used as a drop-in replacement for it. For more information about it, you can
+        /// read [its documentation](https://doc.rust-lang.org/alloc/index.html).
+        ///
+        /// # Is this complete?
+        ///
+        /// No, currently only a subset of `unsafe` functions actually have preconditions defined
+        /// here. More may be added in the future. If you're missing something, please file an
+        /// issue.
+        ///
+        /// **Nevertheless, all of the `alloc` library is still usable through this module**,
+        /// but not all of the `unsafe` functions will have preconditions added to them.
+        ///
+        /// As a workaround, you can add the preconditions locally in your own crate using the
+        /// [`extern_crate` attribute](../attr.extern_crate.html).
+        ///
+        /// # Why is it named `alloc_lib` in the documentation?
+        ///
+        /// If it were simply named `alloc` there would be a naming conflict with this module, so
+        /// either of them had to have a different name.
+        #[cfg(feature = "alloc")]
+        #[pre::extern_crate(alloc_lib)]
+        #[pre::pre(no_doc)]
+        pub mod $alloc_name {
+            $($alloc_item)*
+        }
+
         /// Precondition definitions for `unsafe` functions in the [`std` library](https://doc.rust-lang.org/std/index.html).
         ///
         /// It can be used as a drop-in replacement for it. For more information about it, you can
@@ -78,6 +110,8 @@ macro_rules! define_libs {
         #[pre::pre(no_doc)]
         pub mod $std_name {
             $($core_item)*
+
+            $($alloc_item)*
 
             $($std_item)*
         }
@@ -386,6 +420,23 @@ define_libs! {
             #[pre("the memory referenced by the returned slice is not accessed by any pointer other than the returned slice for the duration of `'a`")]
             #[pre(len * ::core::mem::size_of::<T>() <= isize::MAX as usize)]
             unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T];
+        }
+    }
+
+    alloc {
+        mod vec {
+            impl<T> Vec<T> {
+                #[pre("`ptr` has been previously allocated via `String` or `Vec<T>`")]
+                #[pre("`T` has the same size and alignment as what `ptr` was allocated with")]
+                #[pre(length <= capacity)]
+                #[pre("`capacity` is the capacity that `ptr` was allocated with")]
+                #[pre("`ptr` is not used after this call")]
+                unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Vec<T>;
+
+                #[pre(new_len <= self.capacity())]
+                #[pre("the elements at `old_len..new_len` are initialized")]
+                unsafe fn set_len(&mut self, new_len: usize);
+            }
         }
     }
 

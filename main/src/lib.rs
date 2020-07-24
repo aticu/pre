@@ -1039,6 +1039,12 @@ pub mod libs;
 #[cfg(feature = "core")]
 pub use libs::core;
 
+#[cfg(feature = "alloc")]
+extern crate alloc as alloc_lib;
+#[doc(inline)]
+#[cfg(feature = "alloc")]
+pub use libs::alloc;
+
 #[doc(inline)]
 #[cfg(feature = "std")]
 pub use libs::std;

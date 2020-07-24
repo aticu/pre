@@ -11,8 +11,9 @@ readme = "../README.md"
 edition = "2018"
 
 [features]
-default = ["std", "core"]
+default = ["std", "alloc", "core"]
 std = []
+alloc = []
 core = []
 
 [dependencies]
