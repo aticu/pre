@@ -144,6 +144,14 @@ There are also some technical limitations to what pre can do:
   may be necessary to add an `extern crate core` statement, if you don't have one yet. Also the
   [`extern_crate` attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) is not supported
   with the 2015 edition.
+- While using any of pre's attributes within a [`cfg_attr` attribute](https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute)
+  works, there are two limitations to that:
+    - All `cfg_attr` attributes must have the same configuration predicates. The same here
+      means syntactic equality, so `all(unix, target_endian = "little")` is not the same as
+      `all(target_endian = "little", unix)`. This is done easiest, by simply putting all
+      preconditions behind a single `cfg_attr`.
+    - Nested `cfg_attr` attributes are not supported, so `#[cfg_attr(unix,
+      cfg_attr(target_endian = "little", assure(...)))]` is currently not recognized by pre.
 - There are multiple limitations for functions and methods defined in a module which is
   annotated with the [`extern_crate`
   attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) or has a parent that is:
