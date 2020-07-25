@@ -130,6 +130,9 @@
 //! - Because attribute macros are not supported for expressions and statements on the current
 //!   stable compiler, functions that contain an `assure` attribute must have at least one `pre`
 //!   attribute, though it could be empty: [`#[pre]`](attr.pre.html#checking-functionality).
+//! - pre was designed with the 2018 edition in mind. While it does work with the 2015 edition, it
+//!   may be necessary to add an `extern crate core` statement, if you don't have one yet. Also the
+//!   [`extern_crate` attribute](attr.extern_crate.html) is not supported with the 2015 edition.
 //! - There are multiple limitations for functions and methods defined in a module which is
 //!   annotated with the [`extern_crate` attribute](attr.extern_crate.html) or has a parent that
 //!   is:
