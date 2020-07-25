@@ -309,7 +309,7 @@ define_libs! {
             unsafe fn swap(self, with: *mut T);
 
             #[pre(valid_ptr(self, w))]
-            #[pre("`self` is properly aligned")]
+            #[pre(proper_align(self))]
             unsafe fn write(self, val: T);
 
             #[pre(valid_ptr(self, w))]
@@ -395,7 +395,7 @@ define_libs! {
             unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize);
 
             #[pre(valid_ptr(dst, w))]
-            #[pre("`dst` is properly aligned")]
+            #[pre(proper_align(dst))]
             unsafe fn write<T>(dst: *mut T, src: T);
 
             #[pre(valid_ptr(dst, w))]
