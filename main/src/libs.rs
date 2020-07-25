@@ -424,6 +424,23 @@ define_libs! {
     }
 
     alloc {
+        mod string {
+            impl String {
+                #[pre("the content of the `Vec` is valid UTF-8 at the time the reference is dropped")]
+                unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8>;
+
+                #[pre("the memory at `buf` was allocated with the standard library allocator with an alignment of exactly 1")]
+                #[pre(length <= capacity)]
+                #[pre("`capacity` is the capacity that `buf` was allocated with")]
+                #[pre("`buf` is not used after this call")]
+                #[pre("the first `length` bytes at `buf` are valid UTF-8")]
+                unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String;
+
+                #[pre("the content of `bytes` is valid UTF-8")]
+                unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String;
+            }
+        }
+
         mod vec {
             impl<T> Vec<T> {
                 #[pre("`ptr` has been previously allocated via `String` or `Vec<T>`")]
