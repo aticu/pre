@@ -5,9 +5,8 @@
 //! Sometimes functions or methods have preconditions that cannot be ensured in the type system and
 //! cannot be guarded against at runtime.
 //! The most prominent example of functions like that are `unsafe` functions.
-//! When used correctly, `unsafe` functions are used to ["declare the existence of
-//! contracts the compiler can't
-//! check"](https://doc.rust-lang.org/nomicon/safe-unsafe-meaning.html).
+//! When used correctly, `unsafe` functions are used to ["declare the existence of contracts the
+//! compiler can't check"](https://doc.rust-lang.org/nomicon/safe-unsafe-meaning.html).
 //! These contracts are the preconditions for the function call.
 //! Failing to uphold them usually results in a violation of memory safety and undefined behavior.
 //!
@@ -75,25 +74,24 @@
 //! }
 //! ```
 //!
-//! The [`pre` attribute](attr.pre.html) serves to specify preconditions (on `foo`) and to enable
-//! usage of the `assure` attribute (on `main`). To learn why the second usage is necessary, read
-//! the [paragraph about the checking functionality](attr.pre.html#checking-functionality) on the
-//! documentation of the `pre` attribute.
+//! The [`pre` attribute] serves to specify preconditions (on `foo`) and to enable usage of the
+//! `assure` attribute (on `main`).  To learn why the second usage is necessary, read the paragraph
+//! about the [checking functionality] on the documentation of the `pre` attribute.
 //!
-//! With the [`assure` attribute](attr.assure.html) the programmer assures that the precondition
-//! was checked by them and is upheld.
-//! Without the `assure` attribute, the code would fail to compile.
+//! With the [`assure` attribute] the programmer assures that the precondition was checked by them
+//! and is upheld. Without the `assure` attribute, the code would fail to compile.
 //!
 //! ```rust,compile_fail
 //! use pre::pre;
 //!
-//! #[pre("`arg` is a meaningful value")]
+//! #[pre("`arg` must have a meaningful value")]
 //! fn foo(arg: i32) {
 //!     assert_eq!(arg, 42);
 //! }
 //!
 //! fn main() {
 //!     foo(42);
+//! //  ^^^^^^^-- this errors
 //! }
 //! ```
 //!
@@ -129,12 +127,12 @@
 //!   pass a function as an argument, it will have a different type from what it appears to be.
 //! - Because attribute macros are not supported for expressions and statements on the current
 //!   stable compiler, functions that contain an `assure` attribute must have at least one `pre`
-//!   attribute, though it could be empty: [`#[pre]`](attr.pre.html#checking-functionality).
+//!   attribute, though it could be empty: [`#[pre]`][checking functionality].
 //! - pre was designed with the 2018 edition in mind. While it does work with the 2015 edition, it
 //!   may be necessary to add an `extern crate core` statement, if you don't have one yet. Also the
-//!   [`extern_crate` attribute](attr.extern_crate.html) is not supported with the 2015 edition.
-//! - While using any of pre's attributes within a [`cfg_attr` attribute](https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute)
-//!   works, there are two limitations to that:
+//!   [`extern_crate` attribute] is not supported with the 2015 edition.
+//! - While using any of pre's attributes within a [`cfg_attr` attribute] works, there are two
+//!   limitations to that:
 //!     - All `cfg_attr` attributes must have the same configuration predicates. The same here
 //!       means syntactic equality, so `all(unix, target_endian = "little")` is not the same as
 //!       `all(target_endian = "little", unix)`. This is done easiest, by simply putting all
@@ -142,11 +140,10 @@
 //!     - Nested `cfg_attr` attributes are not supported, so `#[cfg_attr(unix,
 //!       cfg_attr(target_endian = "little", assure(...)))]` is currently not recognized by pre.
 //! - There are multiple limitations for functions and methods defined in a module which is
-//!   annotated with the [`extern_crate` attribute](attr.extern_crate.html) or has a parent that
-//!   is:
+//!   annotated with the [`extern_crate` attribute] or has a parent that is:
 //!     - Calls to such functions/methods call the original function/method for the original type,
 //!       which means that preconditions are not taken into consideration. Use the [`forward`
-//!       attribute](attr.forward.html#impl-call) to check the preconditions on these calls.
+//!       attribute][forward impl] to check the preconditions on these calls.
 //!     - Because of the way they are implemented, it's currently possible for the name of these
 //!       functions to clash with names in their surrounding module. This is unlikely to occur in
 //!       regular usage, but possible. If you encounter such a case, please open an issue
@@ -209,13 +206,12 @@
 //!   |       expected 2 arguments
 //! ```
 //!
-//! This error means that the function has preconditions, but they are not
-//! [`assure`d](attr.assure.html).
+//! This error means that the function has preconditions, but they are not [`assure`d].
 //!
 //! To fix this error, find out what preconditions for the function are and whether they hold.
 //! Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
-//! attribute](attr.assure.html) and explain in the `reason`, why you're sure that they hold.
-//! You should be able to find the function preconditions in the documentation for the function.
+//! attribute] and explain in the `reason`, why you're sure that they hold. You should be able
+//! to find the function preconditions in the documentation for the function.
 //!
 //! ---
 //!
@@ -243,8 +239,8 @@
 //!   |         ^ help: a field with a similar name exists: `_boolean_x_20_3e_2041_2e9`
 //! ```
 //!
-//! This error means that the preconditions that were [`assure`d](attr.assure.html) at the call
-//! site were different from the preconditions at the function definition.
+//! This error means that the preconditions that were [`assure`d] at the call site were different
+//! from the preconditions at the function definition.
 //!
 //! Unfortunately the stable compiler error is not very readable for symbol heavy preconditions.
 //! If have trouble reading these error messages, it is recommended to use the nightly compiler to
@@ -285,13 +281,12 @@
 //!    | |______^ missing `_boolean_x_20_3c_2042_2e1`
 //! ```
 //!
-//! This error means that some, but not all, preconditions were [`assure`d](attr.assure.html) for a
-//! call.
+//! This error means that some, but not all, preconditions were [`assure`d] for a call.
 //!
 //! To fix this error, find out what preconditions you didn't consider yet and check whether they
 //! hold. Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
-//! attribute](attr.assure.html) and explain in the `reason`, why you're sure that they hold.
-//! You should be able to find the function preconditions in the documentation for the function.
+//! attribute] and explain in the `reason`, why you're sure that they hold. You should be able to
+//! find the function preconditions in the documentation for the function.
 //!
 //! ---
 //!
@@ -344,17 +339,16 @@
 //!    |       expected 1 argument
 //! ```
 //!
-//! This error means that one or more preconditions were [`assure`d](attr.assure.html) for a
-//! function that does not have any preconditions.
+//! This error means that one or more preconditions were [`assure`d] for a function that does
+//! not have any preconditions.
 //!
 //! To fix this error, either [add the `assure`d preconditions as preconditions to the
-//! function](attr.pre.html) or remove the `assure` attribute, if you added it in error.
+//! function][`pre` attribute] or remove the `assure` attribute, if you added it in error.
 //!
 //! # Wording of preconditions
 //!
-//! While you can write any text you like in a [custom
-//! precondition](attr.pre.html#precondition-syntax), it is recommended to word them in a way that
-//! makes sense at both the definition and the call site.
+//! While you can write any text you like in a [custom precondition][precondition syntax], it is
+//! recommended to word them in a way that makes sense at both the definition and the call site.
 //!
 //! Therefore it is recommended not to write how things *should be*, but rather how they *are* when
 //! everything is going well.
@@ -450,8 +444,7 @@
 //! }
 //! ```
 //!
-//! You can use the [`extern_crate` attribute](attr.extern_crate.html) to create a version of
-//! `some_fn` with preconditions.
+//! You can use the [`extern_crate` attribute] to create a version of `some_fn` with preconditions.
 //!
 //! ```rust
 //! use pre::pre;
@@ -489,7 +482,7 @@
 //!
 //! When you've converted all call sites and you're ready to fully convert the function, you can
 //! simply add the preconditions to the original function and remove the [`forward`
-//! attributes](attr.forward.html).
+//! attributes][`forward` attribute].
 //!
 //! ```rust
 //! use pre::pre;
@@ -526,7 +519,7 @@
 //! ## `"TODO"` as a reason
 //!
 //! **This paragraph only applies if you use the nightly compiler**, because it depends on the
-//! [`proc_macro_diagnostic` feature](https://github.com/rust-lang/rust/issues/54140).
+//! [`proc_macro_diagnostic` feature].
 //!
 //! Using `"TODO"` as a reason in an `assure` attribute will issue a warning, to remind you of
 //! checking why you believe the precondition holds.
@@ -539,6 +532,17 @@
 //!
 //! Because the warnings only work on the nightly compiler, **usage of `"TODO"` as a reason is
 //! discouraged when using the stable compiler**.
+//!
+//! [`pre` attribute]: attr.pre.html
+//! [checking functionality]: attr.pre.html#checking-functionality
+//! [precondition syntax]: attr.pre.html#precondition-syntax
+//! [`assure` attribute]: attr.assure.html
+//! [`assure`d]: attr.assure.html
+//! [`extern_crate` attribute]: attr.extern_crate.html
+//! [`forward` attribute]: attr.forward.html
+//! [forward impl]: attr.forward.html#impl-call
+//! [`cfg_attr` attribute]: https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute
+//! [`proc_macro_diagnostic` feature]: https://github.com/rust-lang/rust/issues/54140
 
 #![allow(clippy::needless_doctest_main)]
 #![cfg_attr(nightly, feature(const_generics))]

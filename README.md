@@ -82,15 +82,12 @@ fn main() {
 }
 ```
 
-The [`pre` attribute](https://docs.rs/pre/0.1.0/pre/attr.pre.html) serves to specify
-preconditions (on `foo`) and to enable usage of the `assure` attribute (on `main`).
-To learn why the second usage is necessary, read the [paragraph about the checking
-functionality](https://docs.rs/pre/0.1.0/pre/attr.pre.html#checking-functionality) on the
-documentation of the `pre` attribute.
+The [`pre` attribute] serves to specify preconditions (on `foo`) and to enable usage of the
+`assure` attribute (on `main`).  To learn why the second usage is necessary, read the paragraph
+about the [checking functionality] on the documentation of the `pre` attribute.
 
-With the [`assure` attribute](https://docs.rs/pre/0.1.0/pre/attr.assure.html) the
-programmer assures that the precondition was checked by them and is upheld.
-Without the `assure` attribute, the code would fail to compile.
+With the [`assure` attribute] the programmer assures that the precondition was checked by them and
+is upheld. Without the `assure` attribute, the code would fail to compile.
 
 ```rust,compile_fail
 use pre::pre;
@@ -138,14 +135,12 @@ There are also some technical limitations to what pre can do:
   pass a function as an argument, it will have a different type from what it appears to be.
 - Because attribute macros are not supported for expressions and statements on the current
   stable compiler, functions that contain an `assure` attribute must have at least one `pre`
-  attribute, though it could be empty:
-  [`#[pre]`](https://docs.rs/pre/0.1.0/pre/attr.pre.html#checking-functionality).
+  attribute, though it could be empty: [`#[pre]`][checking functionality].
 - pre was designed with the 2018 edition in mind. While it does work with the 2015 edition, it
   may be necessary to add an `extern crate core` statement, if you don't have one yet. Also the
-  [`extern_crate` attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) is not supported
-  with the 2015 edition.
-- While using any of pre's attributes within a [`cfg_attr` attribute](https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute)
-  works, there are two limitations to that:
+  [`extern_crate` attribute] is not supported with the 2015 edition.
+- While using any of pre's attributes within a [`cfg_attr` attribute] works, there are two
+  limitations to that:
     - All `cfg_attr` attributes must have the same configuration predicates. The same here
       means syntactic equality, so `all(unix, target_endian = "little")` is not the same as
       `all(target_endian = "little", unix)`. This is done easiest, by simply putting all
@@ -153,12 +148,10 @@ There are also some technical limitations to what pre can do:
     - Nested `cfg_attr` attributes are not supported, so `#[cfg_attr(unix,
       cfg_attr(target_endian = "little", assure(...)))]` is currently not recognized by pre.
 - There are multiple limitations for functions and methods defined in a module which is
-  annotated with the [`extern_crate`
-  attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) or has a parent that is:
+  annotated with the [`extern_crate` attribute] or has a parent that is:
     - Calls to such functions/methods call the original function/method for the original type,
       which means that preconditions are not taken into consideration. Use the [`forward`
-      attribute](https://docs.rs/pre/0.1.0/pre/attr.forward.html#impl-call) to check the
-      preconditions on these calls.
+      attribute][forward impl] to check the preconditions on these calls.
     - Because of the way they are implemented, it's currently possible for the name of these
       functions to clash with names in their surrounding module.  This is unlikely to occur in
       regular usage, but possible. If you encounter such a case, please open an issue
@@ -194,14 +187,12 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   |       expected 2 arguments
 ```
 
-This error means that the function has preconditions, but they are not
-[`assure`d](https://docs.rs/pre/0.1.0/pre/attr.assure.html).
+This error means that the function has preconditions, but they are not [`assure`d].
 
 To fix this error, find out what preconditions for the function are and whether they hold.
 Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
-attribute](https://docs.rs/pre/0.1.0/pre/attr.assure.html) and explain in the `reason`,
-why you're sure that they hold. You should be able to find the function preconditions in the
-documentation for the function.
+attribute] and explain in the `reason`, why you're sure that they hold. You should be able
+to find the function preconditions in the documentation for the function.
 
 ---
 
@@ -229,8 +220,7 @@ error[E0560]: struct `foo` has no field named `_boolean_x_20_3e_2041_2e0`
   |         ^ help: a field with a similar name exists: `_boolean_x_20_3e_2041_2e9`
 ```
 
-This error means that the preconditions that were
-[`assure`d](https://docs.rs/pre/0.1.0/pre/attr.assure.html) at the call site were different
+This error means that the preconditions that were [`assure`d] at the call site were different
 from the preconditions at the function definition.
 
 Unfortunately the stable compiler error is not very readable for symbol heavy preconditions.
@@ -272,14 +262,12 @@ error[E0063]: missing field `_boolean_x_20_3c_2042_2e1` in initializer of `foo`
    | |______^ missing `_boolean_x_20_3c_2042_2e1`
 ```
 
-This error means that some, but not all, preconditions were
-[`assure`d](https://docs.rs/pre/0.1.0/pre/attr.assure.html) for a call.
+This error means that some, but not all, preconditions were [`assure`d] for a call.
 
 To fix this error, find out what preconditions you didn't consider yet and check whether they
 hold. Once you're convinced that they hold, you can `assure` that to pre with an [`assure`
-attribute](https://docs.rs/pre/0.1.0/pre/attr.assure.html) and explain in the `reason`, why
-you're sure that they hold. You should be able to find the function preconditions in the
-documentation for the function.
+attribute] and explain in the `reason`, why you're sure that they hold. You should be able to
+find the function preconditions in the documentation for the function.
 
 ---
 
@@ -332,13 +320,11 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
    |       expected 1 argument
 ```
 
-This error means that one or more preconditions were
-[`assure`d](https://docs.rs/pre/0.1.0/pre/attr.assure.html) for a function that does not
-have any preconditions.
+This error means that one or more preconditions were [`assure`d] for a function that does
+not have any preconditions.
 
 To fix this error, either [add the `assure`d preconditions as preconditions to the
-function](https://docs.rs/pre/0.1.0/pre/attr.pre.html) or remove the `assure` attribute,
-if you added it in error.
+function][`pre` attribute] or remove the `assure` attribute, if you added it in error.
 
 ## Background
 
@@ -346,3 +332,13 @@ This library is developed for my bachelor's thesis titled "Implementierung und E
 The second part of the thesis focuses on evaluating whether such a library is useful and whether the benefits are worth the additional effort.
 
 I'd be very grateful if you open an issue with any feedback that you have on this library, as that helps my evaluation efforts.
+
+[`pre` attribute]: https://docs.rs/pre/latest/pre/attr.pre.html
+[checking functionality]: https://docs.rs/pre/latest/pre/attr.pre.html#checking-functionality
+[precondition syntax]: https://docs.rs/pre/latest/pre/attr.pre.html#precondition-syntax
+[`assure` attribute]: https://docs.rs/pre/latest/pre/attr.assure.html
+[`assure`d]: https://docs.rs/pre/latest/pre/attr.assure.html
+[`extern_crate` attribute]: https://docs.rs/pre/latest/pre/attr.extern_crate.html
+[`forward` attribute]: https://docs.rs/pre/latest/pre/attr.forward.html
+[forward impl]: https://docs.rs/pre/latest/pre/attr.forward.html#impl-call
+[`cfg_attr` attribute]: https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute
