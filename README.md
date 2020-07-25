@@ -140,6 +140,10 @@ There are also some technical limitations to what pre can do:
   stable compiler, functions that contain an `assure` attribute must have at least one `pre`
   attribute, though it could be empty:
   [`#[pre]`](https://docs.rs/pre/0.1.0/pre/attr.pre.html#checking-functionality).
+- pre was designed with the 2018 edition in mind. While it does work with the 2015 edition, it
+  may be necessary to add an `extern crate core` statement, if you don't have one yet. Also the
+  [`extern_crate` attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) is not supported
+  with the 2015 edition.
 - There are multiple limitations for functions and methods defined in a module which is
   annotated with the [`extern_crate`
   attribute](https://docs.rs/pre/0.1.0/pre/attr.extern_crate.html) or has a parent that is:
