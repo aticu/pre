@@ -357,6 +357,58 @@
 //!
 //! > "the elements at `old_len..new_len` **are** initialized"
 //!
+//! # Feature flags
+//!
+//! If you're planning on using pre in a library, you should consider how the increased
+//! compile time might affect your users. If you're planning on making the preconditions part of
+//! your public API there is not really a way around that.
+//!
+//! If you're only using the preconditions internally to check the correctness of your
+//! implementation however, you can add pre as a `dev-dependency` and perform all those checks
+//! behind a `cfg_attr`. This would not affect users of your library at all.
+//!
+//! Here is an example of that:
+//!
+//! ```toml
+//! # Cargo.toml
+//!
+//! [dev-dependencies]
+//! pre = "<latest version>"
+//! ```
+//!
+//! ```rust
+//! /* src/lib.rs */
+//!
+//! #[cfg(test)]
+//! use pre::pre;
+//!
+//! #[cfg_attr(
+//!     test,
+//!     pre("your first condition"),
+//!     pre("your second condition")
+//! )]
+//! fn some_non_pub_fn() {}
+//!
+//! #[cfg_attr(
+//!     test,
+//!     pre
+//! )]
+//! pub fn some_pub_fn() {
+//!     #[cfg_attr(
+//!         test,
+//!         assure(
+//!             "your first condition",
+//!             reason = "your reason"
+//!         ),
+//!         assure(
+//!             "your second condition",
+//!             reason = "your reason"
+//!         )
+//!     )]
+//!     some_non_pub_fn();
+//! }
+//! ```
+//!
 //! # Changing an existing code base to use pre
 //!
 //! One problem when changing a code base to use pre is that once a function has preconditions,
