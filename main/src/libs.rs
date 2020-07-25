@@ -6,6 +6,11 @@ macro_rules! define_libs {
             $($core_item:item)*
         }
 
+        // For modules which are different in `core` than in `std` and `alloc` (such as `str`)
+        core_only {
+            $($core_only_item:item)*
+        }
+
         $alloc_name:ident {
             $($alloc_item:item)*
         }
@@ -47,6 +52,7 @@ macro_rules! define_libs {
         #[pre::pre(no_doc)]
         pub mod $core_name {
             $($core_item)*
+            $($core_only_item)*
         }
 
         /// Precondition definitions for `unsafe` functions in the [`alloc` library](https://doc.rust-lang.org/alloc/index.html).
@@ -423,7 +429,28 @@ define_libs! {
         }
     }
 
+    core_only {
+        mod str {
+            #[pre("the content of `v` is valid UTF-8")]
+            unsafe fn from_utf8_unchecked(v: &[u8]) -> &str;
+
+            #[pre("the content of `v` is valid UTF-8")]
+            unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str;
+        }
+    }
+
     alloc {
+        mod str {
+            #[pre("the content of `v` is valid UTF-8")]
+            unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str>;
+
+            #[pre("the content of `v` is valid UTF-8")]
+            unsafe fn from_utf8_unchecked(v: &[u8]) -> &str;
+
+            #[pre("the content of `v` is valid UTF-8")]
+            unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str;
+        }
+
         mod string {
             impl String {
                 #[pre("the content of the `Vec` is valid UTF-8 at the time the reference is dropped")]
