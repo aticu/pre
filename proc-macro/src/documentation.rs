@@ -241,12 +241,10 @@ pub(crate) fn generate_docs(
         }
 
         for precondition in preconditions {
-            doc!(
-                docs,
-                "#[assure({}, reason = {:?})]",
-                precondition.precondition(),
-                HINT_REASON
-            );
+            doc!(docs, "#[assure(",);
+            doc!(docs, "    {},", precondition.precondition());
+            doc!(docs, "    reason = {:?}", HINT_REASON);
+            doc!(docs, ")]");
         }
 
         let receiver = if function.receiver().is_some() {
