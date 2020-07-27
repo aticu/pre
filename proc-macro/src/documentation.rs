@@ -124,7 +124,7 @@ pub(crate) fn generate_docs(
         match (cfg!(nightly), path_str_no_generics) {
             (true, Some(no_generics)) => doc!(
                 docs,
-                "A stub for the preconditions of the [`{}`]({}) function.",
+                "A stub for the preconditions of the [`{}`](value@{}) function.",
                 path_str,
                 no_generics
             ),
@@ -296,7 +296,7 @@ pub(crate) fn generate_module_docs(module: &Module, path: &Path) -> Attribute {
     if cfg!(nightly) {
         doc!(
             docs,
-            "[`pre` definitions]({}) for the [`{}`]({}) {}.",
+            "[`pre` definitions]({}) for the [`{}`](module@{}) {}.",
             PRE_LINK,
             path_str,
             path_str,
@@ -351,7 +351,12 @@ pub(crate) fn generate_extern_crate_fn_docs(
     doc_inline!(path_str, "{}", function.ident);
 
     if cfg!(nightly) {
-        doc!(docs, "[`{}`]({}) with preconditions.", path_str, path_str);
+        doc!(
+            docs,
+            "[`{}`](value@{}) with preconditions.",
+            path_str,
+            path_str
+        );
     } else {
         doc!(docs, "`{}` with preconditions.", path_str);
     }
@@ -366,7 +371,7 @@ pub(crate) fn generate_extern_crate_fn_docs(
         if cfg!(nightly) {
             doc!(
                 docs,
-                "**You should also read the [Safety section on the documentation of `{}`]({}#safety).**",
+                "**You should also read the [Safety section on the documentation of `{}`](value@{}#safety).**",
                 path_str,
                 path_str
             );
