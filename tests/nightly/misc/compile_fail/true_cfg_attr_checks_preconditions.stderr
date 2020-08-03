@@ -4,5 +4,5 @@ error[E0308]: mismatched types
 10 |         assure("fuu", reason = "is fuu")
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `"foo"`, found `"fuu"`
    |
-   = note: expected struct `std::marker::PhantomData<(pre::CustomCondition<"foo">,)>`
-              found struct `std::marker::PhantomData<(pre::CustomCondition<"fuu">,)>`
+   = note: expected struct `pre::CustomCondition<"foo">`
+              found struct `pre::CustomCondition<"fuu">`
