@@ -32,7 +32,7 @@
 //! fn has_preconditions(
 //!     some_val: f32,
 //!     #[cfg(not(doc))]
-//!     _: ::core::marker::PhantomData<(::pre::BooleanCondition<"some_val > 42.0">,)>,
+//!     _: (::pre::BooleanCondition<"some_val > 42.0">,),
 //! ) -> f32 {
 //!     ::core::debug_assert!(
 //!         some_val > 42.0
@@ -47,7 +47,7 @@
 //! fn main() {
 //!     has_preconditions(
 //!         43.0,
-//!         ::core::marker::PhantomData::<(::pre::BooleanCondition<"some_val > 42.0">,)>,
+//!         (::pre::BooleanCondition<"some_val > 42.0">,),
 //!     );
 //! }
 //! ```
@@ -128,7 +128,7 @@ pub(crate) fn render_pre(
     function.sig.inputs.push(
         parse2(quote_spanned! { span=>
             #[cfg(all(not(doc), #combined_cfg))]
-            _: ::core::marker::PhantomData<(#preconditions)>
+            _: (#preconditions)
         })
         .expect("parses as a function argument"),
     );
@@ -150,7 +150,7 @@ pub(crate) fn render_assure(
     call.args_mut().push(
         parse2(quote_spanned! { span=>
             #[cfg(all(not(doc), #combined_cfg))]
-            ::core::marker::PhantomData::<(#preconditions)>
+            (#preconditions)
         })
         .expect("parses as an expression"),
     );
