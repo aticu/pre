@@ -175,6 +175,7 @@ pub(crate) fn generate_docs(
         doc!(docs);
         doc!(docs, "Preconditions on external functions inside of an `impl` block are attached to empty functions like this one.");
         doc!(docs, "When the preconditions should be checked, a call to this function is inserted, which triggers checking the preconditions.");
+        doc!(docs);
     }
 
     if !preconditions.is_empty() {
