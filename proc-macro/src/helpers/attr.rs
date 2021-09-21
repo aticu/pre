@@ -185,7 +185,7 @@ impl<Content: Parse + Spanned> Attr<Content> {
                     .pound_token
                     .span
                     .join(attribute.bracket_token.span)
-                    .unwrap_or_else(|| attribute.bracket_token.span),
+                    .unwrap_or(attribute.bracket_token.span),
             })
         } else if attribute.path.is_ident("cfg_attr") {
             let Parenthesized {
@@ -213,7 +213,7 @@ impl<Content: Parse + Spanned> Attr<Content> {
             let span = path
                 .span()
                 .join(inner_parentheses.span)
-                .unwrap_or_else(|| inner_parentheses.span);
+                .unwrap_or(inner_parentheses.span);
 
             Some(Attr::WithCfg {
                 _cfg_attr_keyword: attribute.path.clone(),

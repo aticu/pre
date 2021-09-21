@@ -138,7 +138,7 @@ impl Spanned for Module {
         self.visibility
             .span()
             .join(self.braces.span)
-            .unwrap_or_else(|| self.braces.span)
+            .unwrap_or(self.braces.span)
     }
 }
 
@@ -350,10 +350,13 @@ fn render_function(
     });
 
     // Update the spans of the `::` tokens to lie in the function
-    for punct in path.segments.pairs_mut().map(|p| p.into_tuple().1) {
-        if let Some(punct) = punct {
-            punct.spans = [function.span(); 2];
-        }
+    for punct in path
+        .segments
+        .pairs_mut()
+        .map(|p| p.into_tuple().1)
+        .flatten()
+    {
+        punct.spans = [function.span(); 2];
     }
 
     let mut args_list = TokenStream::new();

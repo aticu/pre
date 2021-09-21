@@ -10,12 +10,15 @@ error: unable to determine at compile time which function is being called
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/unnamed_fn.rs:11:5
    |
+11 |     fn_array[0]();
+   |     ^^^^^^^^^^^-- supplied 0 arguments
+   |     |
+   |     expected 1 argument
+   |
+note: function defined here
+  --> $DIR/unnamed_fn.rs:4:4
+   |
 3  |   #[pre("precondition")]
    |  _______-
 4  | | fn foo() {}
-   | |___________- defined here
-...
-11 |       fn_array[0]();
-   |       ^^^^^^^^^^^-- supplied 0 arguments
-   |       |
-   |       expected 1 argument
+   | |____^^-

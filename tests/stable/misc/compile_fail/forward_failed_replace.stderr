@@ -24,9 +24,6 @@ help: consider importing this struct instead
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/forward_failed_replace.rs:22:5
    |
-5  |           pub(crate) fn foo() {}
-   |           ------------------- defined here
-...
 21 |       #[assure("is foo", reason = "foo is always foo")]
    |  ______-
 22 | |     a::d::foo();
@@ -34,3 +31,9 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
    | |     |
    | |_____expected 0 arguments
    |       supplied 1 argument
+   |
+note: function defined here
+  --> $DIR/forward_failed_replace.rs:5:23
+   |
+5  |         pub(crate) fn foo() {}
+   |                       ^^^
