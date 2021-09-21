@@ -1,6 +1,6 @@
 [package]
 name = "pre"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Niclas Schwarzlose <15schnic@gmail.com>"]
 license = "MIT OR Apache-2.0"
 description = "Compile-time assistance for working with unsafe code."
@@ -17,7 +17,7 @@ alloc = []
 core = []
 
 [dependencies]
-pre-proc-macro = { version = "=0.2.0", path = "../proc-macro" }
+pre-proc-macro = { version = "=0.2.1", path = "../proc-macro" }
 cfg-if = "0.1"
 
 [build-dependencies]

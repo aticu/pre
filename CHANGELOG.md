@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 However, since version 1.0.0 has not been reached, breaking changes between minor releases are
 possible, though if possible they are avoided.
 
+## [0.2.1] - 2021-09-21
+
+### Changed
+
+- Version `0.2.1` is compatible with `nightly-2021-09-19`.
+- Minor improvements were made to the generated documentation.
+
 ## [0.2.0] - 2020-07-26
 
 ### Added
