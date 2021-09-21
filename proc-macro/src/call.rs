@@ -42,10 +42,7 @@ impl Call {
     /// Checks if the call expression is a function call.
     #[allow(dead_code)]
     pub(crate) fn is_function(&self) -> bool {
-        match self {
-            Call::Function(_) => true,
-            _ => false,
-        }
+        matches!(self, Call::Function(_))
     }
 }
 

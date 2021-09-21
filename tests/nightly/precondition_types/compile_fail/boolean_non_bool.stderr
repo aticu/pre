@@ -4,4 +4,4 @@ error[E0308]: mismatched types
 3 | #[pre(14 + 20 + 8)]
   |       ^^^^^^^^^^^ expected `bool`, found integer
   |
-  = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+  = note: this error originates in the macro `::core::debug_assert` (in Nightly builds, run with -Z macro-backtrace for more info)

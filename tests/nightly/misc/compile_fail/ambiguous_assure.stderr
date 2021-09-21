@@ -9,29 +9,31 @@ error: could not find an unambiguos call to apply this to
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/ambiguous_assure.rs:16:5
    |
+16 |     foo()[bar()];
+   |     ^^^-- supplied 0 arguments
+   |     |
+   |     expected 1 argument
+   |
+note: function defined here
+  --> $DIR/ambiguous_assure.rs:4:4
+   |
 3  |   #[pre("baz")]
    |  _______-
 4  | | fn foo() -> [u8; 8] {
-5  | |     [0; 8]
-6  | | }
-   | |_- defined here
-...
-16 |       foo()[bar()];
-   |       ^^^-- supplied 0 arguments
-   |       |
-   |       expected 1 argument
+   | |____^^-
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/ambiguous_assure.rs:16:11
    |
+16 |     foo()[bar()];
+   |           ^^^-- supplied 0 arguments
+   |           |
+   |           expected 1 argument
+   |
+note: function defined here
+  --> $DIR/ambiguous_assure.rs:9:4
+   |
 8  |   #[pre("baz")]
    |  _______-
 9  | | fn bar() -> usize {
-10 | |     0
-11 | | }
-   | |_- defined here
-...
-16 |       foo()[bar()];
-   |             ^^^-- supplied 0 arguments
-   |             |
-   |             expected 1 argument
+   | |____^^-

@@ -545,7 +545,7 @@
 //! [`proc_macro_diagnostic` feature]: https://github.com/rust-lang/rust/issues/54140
 
 #![allow(clippy::needless_doctest_main)]
-#![cfg_attr(nightly, feature(const_generics))]
+#![cfg_attr(nightly, feature(adt_const_params))]
 #![cfg_attr(nightly, allow(incomplete_features))]
 #![cfg_attr(not(feature = "std"), no_std)]
 

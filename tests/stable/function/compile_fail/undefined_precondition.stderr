@@ -7,10 +7,13 @@ error[E0574]: expected struct, variant or union type, found function `foo`
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
  --> $DIR/undefined_precondition.rs:8:5
   |
-3 | fn foo() {}
-  | -------- defined here
-...
 7 |     #[assure("is bar", reason = "foo is bar")]
   |      ----------------------------------------- supplied 1 argument
 8 |     foo()
   |     ^^^ expected 0 arguments
+  |
+note: function defined here
+ --> $DIR/undefined_precondition.rs:3:4
+  |
+3 | fn foo() {}
+  |    ^^^

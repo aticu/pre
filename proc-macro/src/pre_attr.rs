@@ -215,7 +215,7 @@ fn render_function(function: &mut ItemFn, first_attr: Option<PreAttr>) -> TokenS
 
     let span = match (attr_span, first_attr_span) {
         (Some(attr_span), Some(first_attr_span)) => {
-            attr_span.join(first_attr_span).unwrap_or_else(|| attr_span)
+            attr_span.join(first_attr_span).unwrap_or(attr_span)
         }
         (Some(span), None) => span,
         (None, Some(span)) => span,

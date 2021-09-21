@@ -188,7 +188,7 @@ impl Ord for Precondition {
                 Precondition::ValidPtr {
                     ident: ident_other, ..
                 },
-            ) => ident_self.cmp(&ident_other),
+            ) => ident_self.cmp(ident_other),
             (
                 Precondition::ProperAlign {
                     ident: ident_self, ..
@@ -196,7 +196,7 @@ impl Ord for Precondition {
                 Precondition::ProperAlign {
                     ident: ident_other, ..
                 },
-            ) => ident_self.cmp(&ident_other),
+            ) => ident_self.cmp(ident_other),
             (Precondition::Boolean(expr_self), Precondition::Boolean(expr_other)) => {
                 quote!(#expr_self)
                     .to_string()
@@ -317,7 +317,7 @@ impl Spanned for ReadWrite {
             } => r_keyword
                 .span
                 .join(w_keyword.span)
-                .unwrap_or_else(|| r_keyword.span),
+                .unwrap_or(r_keyword.span),
         }
     }
 }
@@ -348,10 +348,7 @@ impl Spanned for CfgPrecondition {
 
 impl PartialEq for CfgPrecondition {
     fn eq(&self, other: &Self) -> bool {
-        match self.cmp(other) {
-            Ordering::Equal => true,
-            _ => false,
-        }
+        matches!(self.cmp(other), Ordering::Equal)
     }
 }
 

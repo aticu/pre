@@ -156,22 +156,18 @@ pub(crate) fn remove_call_attributes(attributes: &mut Vec<Attribute>) -> Option<
         (Some(preconditions_span), Some(forward_span)) => Some(
             preconditions_span
                 .join(forward_span)
-                .unwrap_or_else(|| preconditions_span),
+                .unwrap_or(preconditions_span),
         ),
         (Some(span), None) => Some(span),
         (None, Some(span)) => Some(span),
         (None, None) => None,
     };
 
-    if let Some(span) = span {
-        Some(CallAttributes {
-            span,
-            forward,
-            assure_attributes,
-        })
-    } else {
-        None
-    }
+    span.map(|span| CallAttributes {
+        span,
+        forward,
+        assure_attributes,
+    })
 }
 
 /// Renders the call using the found attributes for it.

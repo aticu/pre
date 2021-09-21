@@ -18,11 +18,14 @@ help: try specifing a prefix of `a :: d :: foo` in the `forward` attribute
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/forward_failed_replace.rs:22:5
    |
-5  |           pub(crate) fn foo() {}
-   |           ------------------- defined here
-...
 20 | /     #[forward(b -> c)]
 21 | |     #[assure("is foo", reason = "foo is always foo")]
    | |_____________________________________________________- supplied 1 argument
 22 |       a::d::foo();
    |       ^^^^^^^^^ expected 0 arguments
+   |
+note: function defined here
+  --> $DIR/forward_failed_replace.rs:5:23
+   |
+5  |         pub(crate) fn foo() {}
+   |                       ^^^

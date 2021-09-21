@@ -63,7 +63,7 @@ pub(crate) fn visit_matching_attrs_parsed_mut<ParsedAttr: Parse + Spanned>(
             match visit(attr) {
                 AttributeAction::Remove => {
                     span_of_all = Some(match span_of_all.take() {
-                        Some(old_span) => old_span.join(span).unwrap_or_else(|| span),
+                        Some(old_span) => old_span.join(span).unwrap_or(span),
                         None => span,
                     });
 
@@ -116,22 +116,22 @@ pub(crate) fn attributes_of_expression(expr: &mut Expr) -> Option<&mut Vec<Attri
 ///
 /// Ideally both are shown, when the function definition is shown.
 pub(crate) fn add_span_to_signature(span: Span, signature: &mut Signature) {
-    signature.fn_token.span = signature.fn_token.span.join(span).unwrap_or_else(|| span);
+    signature.fn_token.span = signature.fn_token.span.join(span).unwrap_or(span);
 
     if let Some(token) = &mut signature.constness {
-        token.span = token.span.join(span).unwrap_or_else(|| span);
+        token.span = token.span.join(span).unwrap_or(span);
     }
 
     if let Some(token) = &mut signature.asyncness {
-        token.span = token.span.join(span).unwrap_or_else(|| span);
+        token.span = token.span.join(span).unwrap_or(span);
     }
 
     if let Some(token) = &mut signature.unsafety {
-        token.span = token.span.join(span).unwrap_or_else(|| span);
+        token.span = token.span.join(span).unwrap_or(span);
     }
 
     if let Some(abi) = &mut signature.abi {
-        abi.extern_token.span = abi.extern_token.span.join(span).unwrap_or_else(|| span);
+        abi.extern_token.span = abi.extern_token.span.join(span).unwrap_or(span);
     }
 }
 
